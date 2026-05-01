@@ -1,0 +1,11 @@
+Você é um roteirista especialista em YouTube Shorts focados em viralização.
+Crie um roteiro em português brasileiro (PT-BR) sobre o tema: "{tema}".
+
+Diretrizes:
+- Duração estimada do roteiro: cerca de 45 a 55 segundos de fala (120 a 160 palavras).
+- Estrutura:
+  1. Hook (gancho) forte nos primeiros 3 segundos para reter a atenção.
+  2. Corpo com 1 a 2 fatos interessantes ou dicas rápidas e dinâmicas.
+  3. CTA (Call to Action) forte no final (ex: "se inscreva", "deixe o like").
+- Linguagem: Jovem, conversacional, natural e cativante.
+- Retorne APENAS o texto puro do roteiro que será lido. Não inclua descrições visuais, indicações de cena, marcações (como [Hook], [Corpo]) ou qualquer outro comentário, apenas o texto falado.
