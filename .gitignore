@@ -9,13 +9,24 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Output do projeto
+# FFmpeg (muito grande para Git, usar imageio-ffmpeg)
+ffmpeg.exe
+ffmpeg
+
+# Output do projeto (vídeos gerados)
 youtube-shorts-automation/output/
 youtube-shorts-automation/logs/
 youtube-shorts-automation/assets/
 
+# Tokens de autenticação (sensível)
+token.pickle
+client_secret.json
+
 # Configurações do SO e IDE
-.VSCode/
+.vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Antigravity Kit
+.agent/
