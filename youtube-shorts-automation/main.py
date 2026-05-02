@@ -10,6 +10,7 @@ from modules.logger import get_logger
 from modules.script_generator import gerar_roteiro, carregar_roteiro_arquivo
 from modules.audio_generator import gerar_audio, gerar_legendas_whisper
 from modules.visuals_fetcher import buscar_visuais
+from modules.music_fetcher import buscar_musica_fundo
 from modules.video_editor import editar_video
 from modules.thumbnail_generator import gerar_thumbnail
 from modules.uploader import upload_youtube
@@ -20,16 +21,17 @@ log = get_logger("main")
 def limpar_assets():
     """Remove arquivos temporários da pasta assets/."""
     for f in glob.glob(os.path.join(ASSETS_DIR, "*")):
-        try:
-            os.remove(f)
-        except OSError:
-            pass
+        if not f.endswith("music"): # Preserva a pasta de music local
+            try:
+                os.remove(f)
+            except OSError:
+                pass
     log.info("Assets temporários limpos.")
 
 
 def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload: bool = False):
     log.info(f"{'='*50}")
-    log.info(f"INICIANDO GERAÇÃO DE SHORT #{index}")
+    log.info(f"INICIANDO Geração DE SHORT #{index}")
     log.info(f"Tema: {tema}")
     log.info(f"{'='*50}")
 
@@ -57,11 +59,20 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
         if not videos:
             log.error("Falha ao buscar vídeos. Abortando este short.")
             return
+            
+        # 3.5 Busca Música de Fundo
+        bg_music = buscar_musica_fundo(tema)
 
-        # 4. Edição de Vídeo (com Ken Burns + transições)
+        # 4. Edição de Vídeo (com Ken Burns + transições + Música Fundo)
         tema_slug = tema.replace(' ', '_').lower()
         output_video_name = f"short_{tema_slug}_{index}.mp4"
-        video_final = editar_video(videos, audio_path, legendas, output_filename=output_video_name)
+        video_final = editar_video(
+            videos, 
+            audio_path, 
+            legendas, 
+            output_filename=output_video_name,
+            bg_music_path=bg_music
+        )
 
         # 5. Thumbnail (usa frame do primeiro vídeo como fundo)
         thumb_name = f"thumb_{tema_slug}_{index}.jpg"

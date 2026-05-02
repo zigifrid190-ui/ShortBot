@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configurações de API e Ambiente
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "")
 YOUTUBE_CLIENT_SECRET_FILE = os.getenv("YOUTUBE_CLIENT_SECRET_FILE", "client_secret.json")

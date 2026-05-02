@@ -1,6 +1,8 @@
 python-dotenv
 ollama
+groq
 edge-tts
+gTTS
 moviepy<2.0.0
 Pillow<11.0.0
 google-api-python-client

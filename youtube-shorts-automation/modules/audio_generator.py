@@ -14,9 +14,9 @@ os.environ["PATH"] += os.pathsep + os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe
 
 
 def gerar_audio(roteiro: str, filename: str = "audio.mp3") -> str:
-    """Gera áudio a partir do texto usando edge-tts."""
+    """Gera áudio a partir do texto usando edge-tts (principal) ou gTTS (fallback)."""
     audio_path = os.path.join(ASSETS_DIR, filename)
-    log.info("Gerando áudio com voz neural...")
+    log.info("Tentando gerar áudio com voz neural (edge-tts)...")
 
     try:
         async def _gerar():
@@ -24,11 +24,19 @@ def gerar_audio(roteiro: str, filename: str = "audio.mp3") -> str:
             await communicate.save(audio_path)
 
         asyncio.run(_gerar())
-        log.info(f"Áudio salvo em: {audio_path}")
+        log.info(f"Áudio gerado com edge-tts e salvo em: {audio_path}")
         return audio_path
     except Exception as e:
-        log.error(f"Erro ao gerar áudio: {e}")
-        raise
+        log.error(f"Erro no edge-tts: {e}. Iniciando fallback para gTTS...")
+        try:
+            from gtts import gTTS
+            tts = gTTS(text=roteiro, lang='pt', tld='com.br')
+            tts.save(audio_path)
+            log.info(f"Áudio gerado com sucesso via gTTS (fallback) em: {audio_path}")
+            return audio_path
+        except Exception as e_fallback:
+            log.error(f"Erro no fallback (gTTS): {e_fallback}")
+            raise
 
 
 def gerar_legendas_whisper(audio_path: str) -> list:
