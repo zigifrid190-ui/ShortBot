@@ -49,28 +49,33 @@ def _autenticar_youtube():
     return creds
 
 
-def _gerar_metadata_short(roteiro: str, tema: str = "") -> dict:
+def _gerar_metadata_short(roteiro: str, tema: str = "", titulo_ia: str = None, descricao_ia: str = None) -> dict:
     """Gera título, descrição e tags otimizados para YouTube Shorts."""
-    palavras = roteiro.split()
-    # Título: primeiras 8 palavras + emoji
-    titulo_base = " ".join(palavras[:8])
-    titulo = f"🔥 {titulo_base}... #shorts"
+    
+    if titulo_ia:
+        titulo = titulo_ia
+    else:
+        palavras = roteiro.split()
+        titulo_base = " ".join(palavras[:8])
+        titulo = f"🔥 {titulo_base}... #shorts"
 
     # Garantir que o título não ultrapasse 100 caracteres
     if len(titulo) > 100:
         titulo = titulo[:97] + "..."
 
-    # Descrição com roteiro completo + CTAs
-    descricao = (
-        f"{roteiro}\n\n"
-        f"---\n"
-        f"📌 Se esse vídeo te ajudou, DEIXA O LIKE e SE INSCREVE!\n"
-        f"🔔 Ative o sininho para não perder nenhum Short!\n\n"
-        f"#shorts #viral #fyp"
-    )
+    if descricao_ia:
+        descricao = descricao_ia
+    else:
+        descricao = (
+            f"{roteiro}\n\n"
+            f"---\n"
+            f"📌 Se esse vídeo te ajudou, DEIXA O LIKE e SE INSCREVE!\n"
+            f"🔔 Ative o sininho para não perder nenhum Short!\n\n"
+            f"#shorts #viral #fyp"
+        )
 
-    # Tags baseadas no tema
-    tema_limpo = re.sub(r'[^\w\s]', '', tema or titulo_base).lower()
+    # Tags baseadas no tema e título
+    tema_limpo = re.sub(r'[^\w\s]', '', tema or titulo).lower()
     palavras_tema = tema_limpo.split()
     tags = ["shorts", "viral", "fyp", "dicas", "curiosidades"]
     tags.extend(palavras_tema[:5])
@@ -83,11 +88,13 @@ def _gerar_metadata_short(roteiro: str, tema: str = "") -> dict:
     }
 
 
-def upload_youtube(video_path: str, thumb_path: str, roteiro: str, tema: str = ""):
-    """Faz upload do vídeo como YouTube Short via Data API v3."""
+def upload_youtube(video_path: str, thumb_path: str, roteiro: str, tema: str = "", publish_at: str = None, titulo_youtube: str = None, descricao_youtube: str = None):
+    """Faz upload do vídeo como YouTube Short via Data API v3. `publish_at` deve ser ISO 8601."""
     log.info("Iniciando upload para o YouTube...")
     log.info(f"  Vídeo: {video_path}")
     log.info(f"  Thumb: {thumb_path}")
+    if publish_at:
+        log.info(f"  Agendado para: {publish_at}")
 
     creds = _autenticar_youtube()
     if not creds:
@@ -96,7 +103,20 @@ def upload_youtube(video_path: str, thumb_path: str, roteiro: str, tema: str = "
 
     try:
         youtube = build("youtube", "v3", credentials=creds)
-        metadata = _gerar_metadata_short(roteiro, tema)
+        metadata = _gerar_metadata_short(
+            roteiro, 
+            tema=tema, 
+            titulo_ia=titulo_youtube, 
+            descricao_ia=descricao_youtube
+        )
+
+        status_obj = {
+            "privacyStatus": "private" if publish_at else "public",
+            "selfDeclaredMadeForKids": False,
+            "madeForKids": False
+        }
+        if publish_at:
+            status_obj["publishAt"] = publish_at
 
         body = {
             "snippet": {
@@ -107,11 +127,7 @@ def upload_youtube(video_path: str, thumb_path: str, roteiro: str, tema: str = "
                 "defaultLanguage": "pt-BR",
                 "defaultAudioLanguage": "pt-BR"
             },
-            "status": {
-                "privacyStatus": "public",
-                "selfDeclaredMadeForKids": False,
-                "madeForKids": False
-            }
+            "status": status_obj
         }
 
         media = MediaFileUpload(

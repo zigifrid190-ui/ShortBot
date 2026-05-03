@@ -1,13 +1,15 @@
 import os
+import random
 import time
 import requests
-from config import PEXELS_API_KEY, PIXABAY_API_KEY, OPENAI_API_KEY, LEONARDO_API_KEY, ASSETS_DIR, MAX_RETRIES, RETRY_DELAY_SECONDS
+from config import PEXELS_API_KEY, PIXABAY_API_KEY, ASSETS_DIR, MAX_RETRIES, RETRY_DELAY_SECONDS
 from modules.logger import get_logger
 
 log = get_logger("visuals_fetcher")
 
+
 def _baixar_arquivo(url: str, destino: str) -> bool:
-    """Baixa um arquivo (vídeo ou imagem) de uma URL para o destino local."""
+    """Baixa um arquivo de uma URL para o destino local."""
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             r = requests.get(url, stream=True, timeout=30)
@@ -22,41 +24,16 @@ def _baixar_arquivo(url: str, destino: str) -> bool:
                 time.sleep(RETRY_DELAY_SECONDS)
     return False
 
-def _gerar_imagem_openai(prompt: str) -> str:
-    """Gera uma imagem vertical usando OpenAI DALL-E 3."""
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "sua_chave_aqui":
-        return ""
-        
-    log.info(f"Gerando imagem DALL-E 3 para o prompt: '{prompt[:50]}...'")
-    url = "https://api.openai.com/v1/images/generations"
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": "dall-e-3",
-        "prompt": f"Vertical 9:16 aspect ratio. {prompt}",
-        "n": 1,
-        "size": "1024x1792"
-    }
-    
-    try:
-        response = requests.post(url, json=data, headers=headers, timeout=45)
-        response.raise_for_status()
-        image_url = response.json()["data"][0]["url"]
-        log.info("Imagem gerada via OpenAI com sucesso!")
-        return image_url
-    except Exception as e:
-        log.error(f"Erro na OpenAI DALL-E: {e}")
-        return ""
 
-def _buscar_pexels(tema: str, num_videos: int) -> list:
+def _buscar_videos_pexels(termo: str, quantidade: int = 3) -> list:
+    """Busca vídeos verticais no Pexels usando um termo de busca específico."""
     if not PEXELS_API_KEY or PEXELS_API_KEY == "sua_chave_aqui":
         return []
+
     url = "https://api.pexels.com/videos/search"
     headers = {"Authorization": PEXELS_API_KEY}
     params = {
-        "query": f"{tema} vertical",
+        "query": f"{termo} vertical",
         "orientation": "portrait",
         "per_page": 15,
         "size": "medium"
@@ -65,51 +42,108 @@ def _buscar_pexels(tema: str, num_videos: int) -> list:
         response = requests.get(url, headers=headers, params=params, timeout=15)
         response.raise_for_status()
         videos = response.json().get("videos", [])
+
         links = []
-        for video in videos[:num_videos * 2]:
+        for video in videos:
             video_files = video.get("video_files", [])
-            hd_vertical = [vf for vf in video_files if vf.get("quality") == "hd" and vf.get("width", 0) < vf.get("height", 0)]
-            best = hd_vertical[0] if hd_vertical else (video_files[0] if video_files else None)
+            # Prioriza HD vertical
+            hd_vertical = [
+                vf for vf in video_files
+                if vf.get("quality") == "hd" and vf.get("width", 0) < vf.get("height", 0)
+            ]
+            # Fallback para SD vertical
+            sd_vertical = [
+                vf for vf in video_files
+                if vf.get("width", 0) < vf.get("height", 0)
+            ]
+            best = hd_vertical[0] if hd_vertical else (sd_vertical[0] if sd_vertical else None)
             if best and best.get("link"):
                 links.append(best["link"])
-            if len(links) >= num_videos:
-                break
-        return links
+
+        # Embaralha para não repetir sempre os mesmos clipes
+        random.shuffle(links)
+        return links[:quantidade]
+
     except Exception as e:
-        log.error(f"Erro Pexels: {e}")
+        log.error(f"Erro Pexels ({termo}): {e}")
         return []
 
-def buscar_visuais(tema: str, num_videos: int = 2, prompts_imagem: list = None) -> list:
-    """Busca ou gera visuais (Prioridade: IA Imagens DALL-E -> Pexels Videos)."""
+
+def _buscar_videos_pixabay(termo: str, quantidade: int = 3) -> list:
+    """Busca vídeos no Pixabay como fallback."""
+    if not PIXABAY_API_KEY or PIXABAY_API_KEY == "sua_chave_aqui":
+        return []
+
+    url = "https://pixabay.com/api/videos/"
+    params = {
+        "key": PIXABAY_API_KEY,
+        "q": termo,
+        "per_page": 10,
+        "safesearch": "true",
+        "video_type": "film"
+    }
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        hits = response.json().get("hits", [])
+
+        links = []
+        for hit in hits:
+            video_data = hit.get("videos", {}).get("medium", {})
+            if video_data.get("url"):
+                links.append(video_data["url"])
+
+        random.shuffle(links)
+        return links[:quantidade]
+
+    except Exception as e:
+        log.error(f"Erro Pixabay ({termo}): {e}")
+        return []
+
+
+def buscar_visuais(tema: str, num_videos: int = 3, prompts_imagem: list = None, busca_videos: list = None) -> list:
+    """
+    Busca B-Roll em VÍDEO (não imagens estáticas) usando termos inteligentes.
+    
+    Prioridade:
+    1. Termos de busca gerados pelo LLM (campo 'busca_videos' do JSON)
+    2. Fallback: usa o tema como termo de busca genérico
+    
+    Fontes: Pexels (principal) -> Pixabay (fallback)
+    """
+    # Define os termos de busca
+    termos = busca_videos or prompts_imagem or [tema]
     baixados = []
-    
-    # 1. Tenta Gerar Imagens com IA usando os prompts gerados pelo LLM
-    if prompts_imagem and (OPENAI_API_KEY and OPENAI_API_KEY != "sua_chave_aqui"):
-        log.info(f"Iniciando geração de {len(prompts_imagem)} imagens via IA...")
-        for i, prompt in enumerate(prompts_imagem):
-            img_url = _gerar_imagem_openai(prompt)
-            if img_url:
-                caminho = os.path.join(ASSETS_DIR, f"visual_ia_{i}.jpg")
-                if _baixar_arquivo(img_url, caminho):
-                    baixados.append(caminho)
-                    log.info(f"Visual IA {i+1} salvo: {caminho}")
-                    
-    # Se conseguiu gerar as imagens IA para cobrir os prompts, retorna.
-    if len(baixados) > 0:
-        return baixados
 
-    # 2. Fallback: Se não tem IA ou falhou, busca vídeos no Pexels
-    log.warning("Fallback Visuals: Buscando vídeos em banco de imagens (Pexels)...")
-    links_pexels = _buscar_pexels(tema, num_videos)
-    
-    if not links_pexels:
-        log.error("Nenhum vídeo encontrado no Fallback.")
-        return []
+    log.info(f"Buscando {len(termos)} B-Rolls dinâmicos no Pexels...")
 
-    for i, link in enumerate(links_pexels[:num_videos]):
-        video_path = os.path.join(ASSETS_DIR, f"stock_video_{i}.mp4")
-        if _baixar_arquivo(link, video_path):
-            baixados.append(video_path)
-            log.info(f"Stock Vídeo {i+1} salvo em: {video_path}")
-            
+    for i, termo in enumerate(termos):
+        log.info(f"  Buscando vídeo para: '{termo}'")
+
+        # Tenta Pexels primeiro
+        links = _buscar_videos_pexels(termo, quantidade=1)
+
+        # Fallback Pixabay
+        if not links:
+            log.warning(f"  Pexels sem resultados para '{termo}'. Tentando Pixabay...")
+            links = _buscar_videos_pixabay(termo, quantidade=1)
+
+        # Fallback com tema genérico
+        if not links:
+            log.warning(f"  Pixabay também falhou. Buscando com tema genérico: '{tema}'")
+            links = _buscar_videos_pexels(tema, quantidade=1)
+
+        if links:
+            video_path = os.path.join(ASSETS_DIR, f"broll_{i}.mp4")
+            if _baixar_arquivo(links[0], video_path):
+                baixados.append(video_path)
+                log.info(f"  ✅ B-Roll {i+1} salvo: {video_path}")
+            else:
+                log.warning(f"  Falha ao baixar B-Roll {i+1}")
+        else:
+            log.warning(f"  Nenhum vídeo encontrado para '{termo}'")
+
+    if not baixados:
+        log.error("Nenhum B-Roll encontrado em nenhuma fonte!")
+
     return baixados

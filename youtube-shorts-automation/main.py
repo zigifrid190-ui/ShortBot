@@ -34,7 +34,7 @@ def limpar_assets():
     log.info("Assets temporários limpos.")
 
 
-def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload: bool = False) -> bool:
+def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload: bool = False, publish_at: str = None) -> bool:
     """Gera um short completo. Retorna True se sucesso, False se falhou."""
     log.info(f"{'='*60}")
     log.info(f"INICIANDO GERAÇÃO DE SHORT #{index}")
@@ -56,7 +56,7 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
             return False
             
         roteiro_texto = roteiro_json["roteiro_texto"]
-        prompts_imagem = roteiro_json.get("prompts_imagem", [f"cinematic shot of {tema}"])
+        busca_videos = roteiro_json.get("busca_videos", roteiro_json.get("prompts_imagem", [tema]))
         clima_musica = roteiro_json.get("clima_da_musica", "lofi")
 
         # 2. Áudio e Legendas
@@ -64,11 +64,12 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
         audio_path = gerar_audio(roteiro_texto, audio_filename)
         legendas = gerar_legendas_whisper(audio_path)
 
-        # 3. Busca de Visuais (Múltiplas fontes, IA)
-        videos_ou_imagens = buscar_visuais(tema, num_videos=len(prompts_imagem), prompts_imagem=prompts_imagem)
+        # 3. Busca de B-Rolls em vídeo (dinâmicos, sem imagens estáticas)
+        videos_ou_imagens = buscar_visuais(tema, num_videos=len(busca_videos), busca_videos=busca_videos)
         if not videos_ou_imagens:
-            log.error("Falha ao buscar vídeos/imagens. Abortando este short.")
+            log.error("Falha ao buscar B-Rolls. Abortando este short.")
             return False
+
             
         # 3.5 Busca Música de Fundo
         bg_music = buscar_musica_fundo(clima_musica)
@@ -92,7 +93,17 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
         if skip_upload:
             log.info("Upload pulado (modo --sem-upload).")
         else:
-            upload_youtube(video_final, thumb, roteiro_texto, tema=tema)
+            titulo_yt = roteiro_json.get("titulo_youtube")
+            descricao_yt = roteiro_json.get("descricao_youtube")
+            upload_youtube(
+                video_final, 
+                thumb, 
+                roteiro_texto, 
+                tema=tema, 
+                publish_at=publish_at,
+                titulo_youtube=titulo_yt,
+                descricao_youtube=descricao_yt
+            )
 
         log.info(f"Short #{index} concluído com sucesso!")
         return True
@@ -100,11 +111,67 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
     except Exception as e:
         log.error(f"Erro fatal no short #{index}: {e}")
         log.error(traceback.format_exc())
-        return False
+def _calcular_horarios_publicacao(quantidade: int) -> list:
+    """
+    Calcula horários de publicação inteligentes baseados nos picos de audiência.
+    
+    Picos de audiência no Brasil (BRT, UTC-3):
+    - 08:00 - Manhã (indo pro trabalho/escola)
+    - 12:00 - Almoço
+    - 18:00 - Fim do expediente
+    - 21:00 - Noite (antes de dormir)
+    
+    O primeiro vídeo é sempre imediato (None).
+    Os demais são encaixados nos próximos slots de pico disponíveis,
+    respeitando o intervalo mínimo de 4 horas.
+    """
+    import datetime
+
+    # Horários de pico em BRT (UTC-3)
+    PICOS_BRT = [8, 12, 18, 21]
+    BRT_OFFSET = datetime.timedelta(hours=-3)
+
+    agora_utc = datetime.datetime.utcnow()
+    agora_brt = agora_utc + BRT_OFFSET
+
+    horarios = [None]  # Primeiro vídeo é imediato
+
+    if quantidade <= 1:
+        return horarios
+
+    # Monta a fila de slots de pico para as próximas 48h
+    slots_disponiveis = []
+    for dia_offset in range(3):  # Hoje, amanhã, depois de amanhã
+        for hora_pico in PICOS_BRT:
+            slot_brt = agora_brt.replace(hour=hora_pico, minute=0, second=0, microsecond=0)
+            slot_brt += datetime.timedelta(days=dia_offset)
+
+            # Converte de volta para UTC para a API do YouTube
+            slot_utc = slot_brt - BRT_OFFSET
+
+            # Slot deve ser pelo menos 30 min no futuro (margem de segurança)
+            if slot_utc > agora_utc + datetime.timedelta(minutes=30):
+                slots_disponiveis.append(slot_utc)
+
+    # Seleciona slots garantindo intervalo mínimo de 4 horas entre eles
+    ultimo_slot = agora_utc
+    for slot in slots_disponiveis:
+        if len(horarios) >= quantidade:
+            break
+        if (slot - ultimo_slot).total_seconds() >= 4 * 3600:  # 4 horas mínimo
+            horarios.append(slot.strftime("%Y-%m-%dT%H:%M:%SZ"))
+            ultimo_slot = slot
+
+    # Se não conseguiu preencher todos com picos, complementa com intervalos de 5h
+    while len(horarios) < quantidade:
+        ultimo_slot += datetime.timedelta(hours=5)
+        horarios.append(ultimo_slot.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    return horarios
 
 
 def executar_lote(temas: list, quantidade_por_tema: int = 1, **kwargs):
-    """Executa um lote de shorts com cooldown e relatório final."""
+    """Executa um lote de shorts com cooldown e agenda nos horários de pico."""
     total = len(temas) * quantidade_por_tema
     sucesso = 0
     falhas = 0
@@ -115,9 +182,19 @@ def executar_lote(temas: list, quantidade_por_tema: int = 1, **kwargs):
     log.info(f"{'#'*60}")
     inicio = time.time()
 
+    # Calcula horários de publicação inteligentes
+    horarios = _calcular_horarios_publicacao(total)
+    for i, h in enumerate(horarios):
+        if h:
+            log.info(f"  Short #{i+1} agendado para: {h}")
+        else:
+            log.info(f"  Short #{i+1}: IMEDIATO (público)")
+
     for tema in temas:
         for _ in range(quantidade_por_tema):
-            resultado = gerar_short(tema, index=count, **kwargs)
+            publish_at = horarios[count - 1] if count - 1 < len(horarios) else None
+
+            resultado = gerar_short(tema, index=count, publish_at=publish_at, **kwargs)
             if resultado:
                 sucesso += 1
             else:
