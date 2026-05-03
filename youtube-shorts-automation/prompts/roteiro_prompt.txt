@@ -5,24 +5,25 @@ TAREFA: Escreva um roteiro falado sobre o tema: "{tema}"
 REGRAS OBRIGATÓRIAS (ALGORITMO 2026):
 1. Escreva ENTRE 80 e 120 palavras (30-45 segundos de fala — ideal para retenção).
 2. Use português brasileiro natural e coloquial (como se estivesse conversando com um amigo).
-3. Comece com um GANCHO BRUTAL nos primeiros 3 segundos (Problema ou Choque) — use uma das técnicas abaixo:
-   - CHOQUE: "Isso pode destruir sua vida e ninguém te avisou"
-   - POLÊMICA: "Todo mundo faz isso errado e eu vou provar"
-   - TOP/LISTA: "3 coisas que vão mudar seu dia agora"
-   - SEGREDO: "O segredo que ninguém te conta sobre..."
-   - URGÊNCIA: "Pare de fazer isso AGORA"
-   - DESAFIO: "Te desafio a assistir isso sem ficar chocado"
-4. No corpo, entregue a SOLUÇÃO rápida para o problema/gancho. Traga 2 a 3 informações VERDADEIRAS.
-5. LOOP INVISÍVEL: A sua última frase deve se conectar PERFEITAMENTE e fazer sentido se lida imediatamente antes da sua primeira frase (o gancho). Isso forçará o espectador a assistir o vídeo de novo sem perceber. Exemplo: "E é exatamente por isso que..." (loopa de volta pro gancho).
-6. Termine com um CTA SUPER rápido antes da frase do loop: "Deixa o like e se inscreve. E é por isso que..."
+3. Comece com um GANCHO BRUTAL nos primeiros 3 segundos. O gancho DEVE conter a PALAVRA-CHAVE do tema para que o espectador saiba imediatamente sobre o que é o vídeo. Exemplos:
+   - Tema "oceano": "O oceano esconde algo que a ciência não consegue explicar"
+   - Tema "finanças": "Esse erro com dinheiro está te deixando pobre sem você perceber"
+   - Tema "cérebro": "Seu cérebro te sabota todos os dias e você nem sabe"
+   - Tema "animais": "Existe um animal que literalmente não pode morrer"
+   NUNCA faça ganchos genéricos como "Isso pode destruir sua vida". Seja ESPECÍFICO ao tema.
+4. No corpo, conte UMA ÚNICA história ou caso em detalhes rápidos. NÃO liste vários exemplos superficiais. Mergulhe fundo em UM caso com 3 atos: (O que aconteceu → O que descobriram → O que nunca explicaram).
+5. LOOP INVISÍVEL: A sua última frase deve se conectar com a primeira frase do gancho. Ao terminar o vídeo, o espectador deve ouvir a frase do loop e imediatamente o gancho faz sentido de novo, criando um ciclo. Exemplo: "...e é por isso que [palavra-chave do tema] nunca vai ser a mesma coisa."
+6. CTA CURTO (máximo 5 palavras) antes do loop: "Curte e se inscreve." — sem explicação, sem filosofia.
 
 PROIBIDO (REGRAS DE OURO):
 - NÃO comece com "Você sabia que" — isso MATA a retenção.
 - NÃO comece com "Olá", "Oi", "Fala galera" ou saudações genéricas.
-- NÃO use o formato "Você sabia que [fato]?" em NENHUM momento do roteiro.
+- NÃO use ganchos genéricos sem a palavra-chave do tema.
+- NÃO liste múltiplos exemplos superficiais. Conte UMA história com profundidade.
 - NÃO inclua marcações como [Hook], [Corpo], [CTA] ou qualquer indicação de cena.
 - NÃO inclua emojis.
 - NÃO inclua descrições visuais ou instruções de edição.
 - NÃO invente dados, estatísticas ou fatos sem base real.
+- NÃO faça CTAs longos. Máximo 5 palavras.
 
 FORMATO: Retorne SOMENTE o texto puro que será narrado. Nada mais.

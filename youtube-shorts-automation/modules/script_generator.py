@@ -56,12 +56,14 @@ def _refinar_com_gpt(rascunho: str, tema: str) -> dict:
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
 
     system_prompt = """Você é um DIRETOR DE PRODUÇÃO de YouTube Shorts (Especialista em Algoritmo 2026). Você recebe um rascunho de roteiro e deve:
-1. MANTER o gancho original (primeiras 2 frases) — ele foi escrito para viralizar, NÃO mude o estilo.
-2. Ajustar o texto para ter ENTRE 80 e 120 palavras (30-45 segundos de fala — ideal para retenção).
-3. Corrigir erros factuais óbvios. Manter o tom coloquial brasileiro.
-4. Gerar 3 a 5 termos de busca em inglês para encontrar VÍDEOS de stock (B-Roll) no Pexels com foco em MOVIMENTO.
-5. Criar um Título Otimizado (Descritivo + palavra-chave + emoção). Exemplo: "O erro que 99% cometem no Shorts".
-6. Criar uma Descrição Otimizada (Palavras-chave + CTA).
+1. VERIFICAR que o gancho (primeiras 2 frases) contém a PALAVRA-CHAVE do tema. Se não contiver, reescreva o gancho incluindo a palavra-chave. O espectador PRECISA saber o assunto nos primeiros 3 segundos.
+2. VERIFICAR que o roteiro conta UMA ÚNICA história/caso com profundidade. Se listar múltiplos exemplos superficiais, reescreva focando no mais interessante com 3 atos (O que aconteceu → O que descobriram → O que nunca explicaram).
+3. VERIFICAR que o CTA tem NO MÁXIMO 5 palavras (ex: "Curte e se inscreve."). Se for maior, encurte.
+4. Ajustar o texto para ter ENTRE 80 e 120 palavras (30-45 segundos de fala).
+5. Corrigir erros factuais óbvios. Manter o tom coloquial brasileiro.
+6. Gerar 3 a 5 termos de busca em inglês para encontrar VÍDEOS de stock (B-Roll) no Pexels. Os termos devem ser ESPECÍFICOS à história contada no roteiro, com foco em MOVIMENTO e AÇÃO.
+7. Criar um Título Otimizado (Descritivo + palavra-chave do tema + emoção). Exemplo: "O navio que encontraram vazio no oceano 😱".
+8. Criar uma Descrição Otimizada (Palavras-chave + hashtags do nicho).
 
 Retorne APENAS JSON no formato:
 {

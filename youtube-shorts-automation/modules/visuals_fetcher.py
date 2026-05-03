@@ -105,6 +105,10 @@ def buscar_visuais(tema: str, num_videos: int = 3, prompts_imagem: list = None, 
     """
     Busca B-Roll em VÍDEO (não imagens estáticas) usando termos inteligentes.
     
+    Otimizado para Algoritmo 2026:
+    - Baixa MÚLTIPLOS clipes por termo para permitir cortes rápidos (2-3s).
+    - Mínimo de 8 clipes para garantir variedade visual.
+    
     Prioridade:
     1. Termos de busca gerados pelo LLM (campo 'busca_videos' do JSON)
     2. Fallback: usa o tema como termo de busca genérico
@@ -113,37 +117,45 @@ def buscar_visuais(tema: str, num_videos: int = 3, prompts_imagem: list = None, 
     """
     # Define os termos de busca
     termos = busca_videos or prompts_imagem or [tema]
+    
+    # Garante variedade: se poucos termos, duplica com variações
+    if len(termos) < 5:
+        termos_extras = [f"{t} close up" for t in termos[:2]]
+        termos = termos + termos_extras
+    
     baixados = []
+    CLIPES_POR_TERMO = 2  # Baixa 2 clipes por termo para mais cortes
 
-    log.info(f"Buscando {len(termos)} B-Rolls dinâmicos no Pexels...")
+    log.info(f"Buscando {len(termos) * CLIPES_POR_TERMO} B-Rolls dinâmicos (cortes rápidos)...")
 
     for i, termo in enumerate(termos):
-        log.info(f"  Buscando vídeo para: '{termo}'")
+        log.info(f"  Buscando vídeos para: '{termo}'")
 
         # Tenta Pexels primeiro
-        links = _buscar_videos_pexels(termo, quantidade=1)
+        links = _buscar_videos_pexels(termo, quantidade=CLIPES_POR_TERMO)
 
         # Fallback Pixabay
         if not links:
             log.warning(f"  Pexels sem resultados para '{termo}'. Tentando Pixabay...")
-            links = _buscar_videos_pixabay(termo, quantidade=1)
+            links = _buscar_videos_pixabay(termo, quantidade=CLIPES_POR_TERMO)
 
         # Fallback com tema genérico
         if not links:
             log.warning(f"  Pixabay também falhou. Buscando com tema genérico: '{tema}'")
             links = _buscar_videos_pexels(tema, quantidade=1)
 
-        if links:
-            video_path = os.path.join(ASSETS_DIR, f"broll_{i}.mp4")
-            if _baixar_arquivo(links[0], video_path):
+        for j, link in enumerate(links):
+            video_path = os.path.join(ASSETS_DIR, f"broll_{i}_{j}.mp4")
+            if _baixar_arquivo(link, video_path):
                 baixados.append(video_path)
-                log.info(f"  ✅ B-Roll {i+1} salvo: {video_path}")
+                log.info(f"  ✅ B-Roll {len(baixados)} salvo: {video_path}")
             else:
-                log.warning(f"  Falha ao baixar B-Roll {i+1}")
-        else:
-            log.warning(f"  Nenhum vídeo encontrado para '{termo}'")
+                log.warning(f"  Falha ao baixar B-Roll de '{termo}'")
 
     if not baixados:
         log.error("Nenhum B-Roll encontrado em nenhuma fonte!")
+    else:
+        log.info(f"Total de B-Rolls baixados: {len(baixados)} (ideal para cortes rápidos)")
 
     return baixados
+
