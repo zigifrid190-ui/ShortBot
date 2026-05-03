@@ -8,8 +8,15 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY", "")
 YOUTUBE_CLIENT_SECRET_FILE = os.getenv("YOUTUBE_CLIENT_SECRET_FILE", "client_secret.json")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+
+# Vozes padrão
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJcg") # Voz masculina padrão (Adam)
+OPENAI_VOICE = os.getenv("OPENAI_VOICE", "echo")
 
 # Configurações do Vídeo
 RESOLUTION = (1080, 1920)  # Largura, Altura para formato vertical (9:16)

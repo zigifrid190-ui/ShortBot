@@ -56,8 +56,8 @@ def _ajustar_clip_vertical(clip, target_w, target_h):
     return clip.resize(newsize=(target_w, target_h))
 
 
-def _criar_clip_legenda(word: str, start_time: float, end_time: float, target_w: int):
-    """Cria um ImageClip com uma palavra estilizada para legendas."""
+def _criar_clip_legenda(word: str, start_time: float, end_time: float, target_w: int, index: int = 0):
+    """Cria um ImageClip com uma palavra estilizada e colorida (Estilo Viral)."""
     if not word.strip():
         return None
 
@@ -87,8 +87,12 @@ def _criar_clip_legenda(word: str, start_time: float, end_time: float, target_w:
         for dy in range(-STROKE_WIDTH, STROKE_WIDTH + 1):
             draw.text((x + dx, y + dy), word_upper, font=font, fill="black")
 
-    # Texto principal branco
-    draw.text((x, y), word_upper, font=font, fill="white")
+    # Alterna as cores da legenda para maior retenção
+    colors = ["#FFFFFF", "#FFEB3B", "#00E676"]  # Branco, Amarelo, Verde
+    fill_color = colors[index % len(colors)]
+
+    # Texto principal com cor dinâmica
+    draw.text((x, y), word_upper, font=font, fill=fill_color)
 
     img_array = np.array(img)
     rgb = img_array[:, :, :3]
@@ -102,48 +106,46 @@ def _criar_clip_legenda(word: str, start_time: float, end_time: float, target_w:
 
 def _montar_clips_video(video_paths: list, duracao_total: float, target_w: int, target_h: int):
     """
-    Monta múltiplos clipes de vídeo com transições de fade.
-    Se só tiver 1 vídeo, aplica loop. Se tiver múltiplos, divide o tempo entre eles.
+    Monta múltiplos clipes (vídeos ou imagens IA) com transições de fade e Ken Burns.
     """
     FADE_DURATION = 0.5
 
-    if len(video_paths) == 1:
-        clip = VideoFileClip(video_paths[0])
-        if clip.duration < duracao_total:
-            from moviepy.video.fx.all import loop
-            clip = clip.fx(loop, duration=duracao_total)
-        else:
-            clip = clip.subclip(0, duracao_total)
-
-        clip = _ajustar_clip_vertical(clip, target_w, target_h)
-        clip = _aplicar_ken_burns(clip)
-        return clip
-
-    # Múltiplos clipes: divide o tempo igualmente com transição fade
+    # Determina a duração que cada clipe deverá ter
     duracao_por_clip = duracao_total / len(video_paths)
     clips_prontos = []
 
     for i, vpath in enumerate(video_paths):
         try:
-            clip = VideoFileClip(vpath)
-            # Ajusta duração do segmento
-            seg_dur = min(clip.duration, duracao_por_clip + FADE_DURATION)
-            clip = clip.subclip(0, seg_dur)
+            is_image = vpath.lower().endswith(('.jpg', '.jpeg', '.png'))
+            if is_image:
+                clip = ImageClip(vpath).set_duration(duracao_por_clip + FADE_DURATION)
+            else:
+                clip = VideoFileClip(vpath)
+                seg_dur = min(clip.duration, duracao_por_clip + FADE_DURATION)
+                clip = clip.subclip(0, seg_dur)
+
             clip = _ajustar_clip_vertical(clip, target_w, target_h)
             clip = _aplicar_ken_burns(clip, zoom_factor=1.1)
 
-            # Aplica fade-in/out para transição suave
-            if i > 0:
-                clip = fadein(clip, FADE_DURATION)
-            if i < len(video_paths) - 1:
-                clip = fadeout(clip, FADE_DURATION)
+            # Aplica fade-in/out para transição suave (se houver mais de 1 clipe)
+            if len(video_paths) > 1:
+                if i > 0:
+                    clip = fadein(clip, FADE_DURATION)
+                if i < len(video_paths) - 1:
+                    clip = fadeout(clip, FADE_DURATION)
 
             clips_prontos.append(clip)
         except Exception as e:
             log.warning(f"Erro ao processar clip {vpath}: {e}")
 
     if not clips_prontos:
-        raise RuntimeError("Nenhum clip de vídeo pôde ser processado.")
+        raise RuntimeError("Nenhum clip de vídeo ou imagem pôde ser processado.")
+
+    if len(clips_prontos) == 1:
+        clip = clips_prontos[0]
+        if clip.duration > duracao_total:
+            return clip.subclip(0, duracao_total)
+        return clip
 
     return concatenate_videoclips(clips_prontos, method="compose")
 
@@ -173,7 +175,6 @@ def editar_video(
         if bg_music_path and os.path.exists(bg_music_path):
             from moviepy.audio.fx.all import volumex, audio_fadeout
             from moviepy.editor import CompositeAudioClip
-            from moviepy.video.fx.all import loop
             
             log.info(f"Adicionando música de fundo: {bg_music_path}")
             bg_clip = AudioFileClip(bg_music_path)
@@ -203,16 +204,43 @@ def editar_video(
         if base_clip.duration > audio_duration:
             base_clip = base_clip.subclip(0, audio_duration)
 
-        base_clip = base_clip.set_audio(audio_clip)
+        # 2.5 Adicionar Efeitos Sonoros (SFX) nas Transições
+        sfx_clips = []
+        from config import ASSETS_DIR
+        import os
+        swoosh_path = os.path.join(ASSETS_DIR, "swoosh.mp3")
+        if len(video_paths) > 1 and os.path.exists(swoosh_path):
+            log.info("Adicionando SFX (Swoosh) nas transições...")
+            try:
+                from moviepy.audio.fx.all import volumex
+                swoosh_base = AudioFileClip(swoosh_path).fx(volumex, 0.3)
+                duracao_por_clip = audio_duration / len(video_paths)
+                
+                for i in range(1, len(video_paths)):
+                    t = i * duracao_por_clip
+                    # Adiciona o swoosh exatamente no tempo de corte da imagem
+                    sfx = swoosh_base.copy().set_start(t)
+                    sfx_clips.append(sfx)
+            except Exception as e:
+                log.warning(f"Não foi possível adicionar SFX Swoosh: {e}")
+
+        # Compor Áudio Final (Voz + Fundo + SFX)
+        from moviepy.editor import CompositeAudioClip
+        audio_layer = [audio_clip]
+        audio_layer.extend(sfx_clips)
+        
+        final_audio = CompositeAudioClip(audio_layer)
+        base_clip = base_clip.set_audio(final_audio)
 
         # 3. Gerar Clips de Legendas Sincronizadas
         text_clips = []
-        for palavra_info in legendas:
+        for i, palavra_info in enumerate(legendas):
             txt_clip = _criar_clip_legenda(
                 palavra_info["word"],
                 palavra_info["start"],
                 palavra_info["end"],
-                target_w
+                target_w,
+                index=i
             )
             if txt_clip:
                 text_clips.append(txt_clip)

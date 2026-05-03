@@ -1,5 +1,6 @@
-1.1transição de imagens mais fluida buscar duas imagens de referencia para fazer as animações masi interessantes e permitir uma melhor transição no short
+1.1 aplicar IA nos visuais para melhorar a qualidade e a variedade das imagens e produzie melhores resultados.
 1.2 usar mais de uma api de imagem para melhorar a qualidade e a variedade das imagens e produzie melhores resultados.
-1.3 postagem automatica no youtube.
-1.4 adicionar a possibilidade de indicar um roteiro para ser usado no short de forma opcional.
-1.5 
+1.3 aplicar IA no audio para melhorar a qualidade e a variedade das audio e produzie melhores resultados.
+1.4 usar mais de uma api de audio para melhorar a qualidade e a variedade das audio e produzie melhores resultados.
+1.5 usar mais de uma api de roteiro para melhorar a qualidade e a variedade das roteiro e produzie melhores resultados.
+1.6 implementar um fundo musical nos videos relacionado ao conteudo, esse fundo musical deve ser livre de direitos autorais e não deve atrapalhar a narração, deve ser apenas para dar um clima ao video.
