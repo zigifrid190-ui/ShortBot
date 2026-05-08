@@ -51,6 +51,9 @@ python main.py --auto 5 --agendar 10:00
 
 # Agendamento Multi-Horário
 python main.py --auto 3 --agendar 08:00,14:00,20:00
+
+# Agendamento "1 por dia" nos horários de pico (8h, 12h ou 18h)
+python main.py --auto 5 --um-por-dia
 ```
 
 ---

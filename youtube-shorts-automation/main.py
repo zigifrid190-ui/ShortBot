@@ -111,58 +111,57 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
     except Exception as e:
         log.error(f"Erro fatal no short #{index}: {e}")
         log.error(traceback.format_exc())
-def _calcular_horarios_publicacao(quantidade: int) -> list:
+def _calcular_horarios_publicacao(quantidade: int, um_por_dia: bool = False) -> list:
     """
     Calcula horários de publicação inteligentes baseados nos picos de audiência.
-    
-    Picos de audiência no Brasil (BRT, UTC-3):
-    - 08:00 - Manhã (indo pro trabalho/escola)
-    - 12:00 - Almoço
-    - 18:00 - Fim do expediente
-    - 21:00 - Noite (antes de dormir)
-    
-    O primeiro vídeo é sempre imediato (None).
-    Os demais são encaixados nos próximos slots de pico disponíveis,
-    respeitando o intervalo mínimo de 4 horas.
     """
     import datetime
+    import random
 
-    # Horários de pico em BRT (UTC-3)
-    PICOS_BRT = [8, 12, 18, 21]
+    # Horários de pico em BRT (UTC-3):
+    # 8 = Ida para o trabalho, 12 = Almoço, 18 = Saída do trabalho
+    PICOS_BRT = [8, 12, 18]
     BRT_OFFSET = datetime.timedelta(hours=-3)
 
     agora_utc = datetime.datetime.utcnow()
     agora_brt = agora_utc + BRT_OFFSET
 
-    horarios = [None]  # Primeiro vídeo é imediato
+    horarios = []
 
+    if um_por_dia:
+        # 1 short por dia, nos próximos 'quantidade' dias
+        for dia_offset in range(1, quantidade + 1):
+            hora_pico = random.choice(PICOS_BRT)
+            slot_brt = agora_brt.replace(hour=hora_pico, minute=0, second=0, microsecond=0)
+            slot_brt += datetime.timedelta(days=dia_offset)
+            slot_utc = slot_brt - BRT_OFFSET
+            horarios.append(slot_utc.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        return horarios
+
+    # Comportamento padrão (empilhados)
+    horarios.append(None)  # Primeiro vídeo é imediato
     if quantidade <= 1:
         return horarios
 
-    # Monta a fila de slots de pico para as próximas 48h
     slots_disponiveis = []
-    for dia_offset in range(3):  # Hoje, amanhã, depois de amanhã
-        for hora_pico in PICOS_BRT:
+    # Adicionando o pico das 21 para o comportamento padrão
+    PICOS_BRT_PADRAO = [8, 12, 18, 21]
+    for dia_offset in range(3):
+        for hora_pico in PICOS_BRT_PADRAO:
             slot_brt = agora_brt.replace(hour=hora_pico, minute=0, second=0, microsecond=0)
             slot_brt += datetime.timedelta(days=dia_offset)
-
-            # Converte de volta para UTC para a API do YouTube
             slot_utc = slot_brt - BRT_OFFSET
-
-            # Slot deve ser pelo menos 30 min no futuro (margem de segurança)
             if slot_utc > agora_utc + datetime.timedelta(minutes=30):
                 slots_disponiveis.append(slot_utc)
 
-    # Seleciona slots garantindo intervalo mínimo de 4 horas entre eles
     ultimo_slot = agora_utc
     for slot in slots_disponiveis:
         if len(horarios) >= quantidade:
             break
-        if (slot - ultimo_slot).total_seconds() >= 4 * 3600:  # 4 horas mínimo
+        if (slot - ultimo_slot).total_seconds() >= 4 * 3600:
             horarios.append(slot.strftime("%Y-%m-%dT%H:%M:%SZ"))
             ultimo_slot = slot
 
-    # Se não conseguiu preencher todos com picos, complementa com intervalos de 5h
     while len(horarios) < quantidade:
         ultimo_slot += datetime.timedelta(hours=5)
         horarios.append(ultimo_slot.strftime("%Y-%m-%dT%H:%M:%SZ"))
@@ -170,7 +169,7 @@ def _calcular_horarios_publicacao(quantidade: int) -> list:
     return horarios
 
 
-def executar_lote(temas: list, quantidade_por_tema: int = 1, **kwargs):
+def executar_lote(temas: list, quantidade_por_tema: int = 1, um_por_dia: bool = False, **kwargs):
     """Executa um lote de shorts com cooldown e agenda nos horários de pico."""
     total = len(temas) * quantidade_por_tema
     sucesso = 0
@@ -183,7 +182,7 @@ def executar_lote(temas: list, quantidade_por_tema: int = 1, **kwargs):
     inicio = time.time()
 
     # Calcula horários de publicação inteligentes
-    horarios = _calcular_horarios_publicacao(total)
+    horarios = _calcular_horarios_publicacao(total, um_por_dia=um_por_dia)
     for i, h in enumerate(horarios):
         if h:
             log.info(f"  Short #{i+1} agendado para: {h}")
@@ -213,7 +212,7 @@ def executar_lote(temas: list, quantidade_por_tema: int = 1, **kwargs):
     log.info(f"{'#'*60}")
 
 
-def job_automatico(quantidade: int, skip_upload: bool):
+def job_automatico(quantidade: int, skip_upload: bool, um_por_dia: bool = False):
     """Job que roda automaticamente: busca temas virais e gera shorts."""
     log.info("="*60)
     log.info("MODO AUTOMÁTICO: Buscando temas virais...")
@@ -228,6 +227,7 @@ def job_automatico(quantidade: int, skip_upload: bool):
         executar_lote(
             temas, 
             quantidade_por_tema=1, 
+            um_por_dia=um_por_dia,
             skip_upload=skip_upload
         )
     except Exception as e:
@@ -256,6 +256,7 @@ Exemplos de uso:
     parser.add_argument("--sem-upload", action="store_true", help="Gera o vídeo sem fazer upload")
     parser.add_argument("--auto", type=int, metavar="N", help="Modo Piloto Automático: busca N temas virais e gera shorts")
     parser.add_argument("--agendar", type=str, metavar="HH:MM", help="Agendar execução diária (ex: 10:00 ou 08:00,14:00,20:00)")
+    parser.add_argument("--um-por-dia", action="store_true", help="Agenda 1 short por dia para os próximos N dias nos horários de pico (8h, 12h, 18h)")
 
     args = parser.parse_args()
 
@@ -267,14 +268,15 @@ Exemplos de uso:
             log.info(f"MODO FANTASMA ativado: {args.auto} shorts nos horários {horarios}")
             
             # Executa uma vez imediatamente
-            job_automatico(args.auto, args.sem_upload)
+            job_automatico(args.auto, args.sem_upload, args.um_por_dia)
             
             # Agenda para os horários definidos
             for horario in horarios:
                 schedule.every().day.at(horario).do(
                     job_automatico, 
                     quantidade=args.auto, 
-                    skip_upload=args.sem_upload
+                    skip_upload=args.sem_upload,
+                    um_por_dia=args.um_por_dia
                 )
                 log.info(f"Agendado para {horario} todos os dias.")
             
@@ -293,7 +295,7 @@ Exemplos de uso:
                     time.sleep(60)
         else:
             # Modo Automático Único: busca temas e gera agora
-            job_automatico(args.auto, args.sem_upload)
+            job_automatico(args.auto, args.sem_upload, args.um_por_dia)
         return
 
     # === MODO MANUAL (temas fornecidos) ===
@@ -319,7 +321,8 @@ Exemplos de uso:
 
     extra_kwargs = {
         "roteiro_path": args.roteiro,
-        "skip_upload": args.sem_upload
+        "skip_upload": args.sem_upload,
+        "um_por_dia": args.um_por_dia
     }
 
     if args.agendar:
