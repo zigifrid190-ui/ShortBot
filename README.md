@@ -34,6 +34,12 @@ Você precisará preencher algumas variáveis de ambiente:
 ELEVENLABS_API_KEY=...      # Voz IA premium (Prioridade 1)
 OPENAI_API_KEY=...          # Roteiro lapidado e TTS (Prioridade 2)
 PEXELS_API_KEY=...          # Busca de B-Rolls (Gratuito)
+
+# Credenciais do TikTok API v2 (Direct Post)
+TIKTOK_CLIENT_KEY=...
+TIKTOK_CLIENT_SECRET=...
+TIKTOK_REDIRECT_URI=https://seu-localtunnel.loca.lt/
+
 # Além disso, é necessário configurar as credenciais do YouTube (client_secrets.json) para o upload.
 ```
 
@@ -72,8 +78,8 @@ O ShortBot nasceu de uma prova de conceito básica e evoluiu para tentar "hackea
 - **Roteiros Mais Engajantes [Melhorias 1.5 e 1.6]:** Separação de funções do LLM (Llama para a "criatividade solta e viral" e GPT para "direção técnica e extração do JSON") e integração de trilha sonora adaptativa.
 - **Segurança da Conta:** Refatoração do sistema de agendamento para evitar o "Shadowban" do YouTube por uploads massivos (Spam).
 
-### 🔮 Versão 3.0 (A Máquina Definitiva - Planejamento)
-- [ ] **Dominação Multi-Plataforma:** Publicação unificada no **Instagram Reels** e **TikTok**.
+### 🔮 Versão 3.0 (A Máquina Definitiva - Atual)
+- [x] **Dominação Multi-Plataforma:** Publicação unificada no **TikTok** e **YouTube** via API Oficial (com fluxo OAuth 2.0 resiliente e bypass de limitações locais com Localtunnel).
 - [ ] **Efeitos Sonoros (SFX) Sincronizados:** O texto indicará palavras-chave para acionar Efeitos Sonoros exatos no frame em que a legenda aparece (ex: Som de moeda na palavra "Dinheiro").
 - [ ] **Motor de Analytics & Retroalimentação Viral:** Sistema que consome os Analytics das próprias postagens e instrui o LLM a reproduzir automaticamente os temas que deram as maiores taxas de visualização no seu nicho.
 - [ ] **Painel de Controle (Web Dashboard):** Criação de uma interface gráfica rodando localmente (FastAPI/Streamlit) para abandonar a dependência estrita do terminal, facilitando visualização do calendário e custos de API.
