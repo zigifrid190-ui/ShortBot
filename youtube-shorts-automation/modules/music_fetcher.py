@@ -56,5 +56,22 @@ def buscar_musica_fundo(tema: str) -> str:
         log.info(f"Música local encontrada: {music_path}")
         return music_path
 
+    # 3. Auto-Download de Fallback: baixar trilha gratuita do GitHub para evitar vídeos mudos
+    log.warning("Nenhuma música local encontrada. Baixando trilha instrumental de fallback do GitHub...")
+    try:
+        fallback_url = "https://github.com/scottschiller/soundmanager2/raw/master/demo/_mp3/background0.mp3"
+        music_path = os.path.join(music_dir, "background_fallback.mp3")
+        
+        r = requests.get(fallback_url, stream=True, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        with open(music_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+                
+        log.info(f"Música de fallback baixada com sucesso: {music_path}")
+        return music_path
+    except Exception as e:
+        log.error(f"Erro ao baixar música de fallback: {e}")
+
     log.warning("Nenhuma música de fundo encontrada. O vídeo será gerado sem fundo musical.")
     return None

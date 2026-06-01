@@ -62,6 +62,32 @@ python main.py --auto 3 --agendar 08:00,14:00,20:00
 python main.py --auto 5 --um-por-dia
 ```
 
+### 🌐 Integração com n8n (Servidor Webhook)
+Para permitir que o n8n (rodando no Docker local ou em servidor externo) gerencie o pipeline de raspagem de métricas e de geração automática de Shorts, foi desenvolvido um Gateway de Webhook local.
+
+Execute para manter o servidor online na porta `8089`:
+```bash
+python youtube-shorts-automation/webhook_server.py
+```
+
+**Endpoints expostos:**
+* **`GET /run`**: Executa o scraper de estatísticas (`scrape_all_stats.py`) sincronamente e retorna os dados coletados de visualizações, likes e comentários.
+* **`GET /generate`**: Aciona de forma assíncrona o pipeline de criação de 5 vídeos semanais (`main.py --auto 5 --um-por-dia`), devolvendo resposta imediata (`202 Accepted`) e gravando logs em `youtube-shorts-automation/logs/weekly_generation.log`.
+
+### 📤 Utilitário de Upload Avulso/Lote
+Se você já possui vídeos editados localmente e deseja enviá-los em massa ou individualmente ao YouTube usando a API do canal:
+```bash
+# Fazer upload de um único vídeo com título e agendamento específicos
+python youtube-shorts-automation/upload_existing.py --video "caminho/do/video.mp4" --titulo "🔥 Curiosidade Surpreendente! #shorts" --agendar "2026-06-01T12:00:00Z"
+
+# Fazer upload em lote de toda uma pasta de vídeos
+# Agenda automaticamente um a cada 4 horas a partir da data de início
+python youtube-shorts-automation/upload_existing.py --pasta "pasta_com_videos" --agendar-lote-inicio "2026-06-01T08:00:00Z" --intervalo-horas 4
+
+# Simular preparação de metadados sem gastar cota de upload (Dry Run)
+python youtube-shorts-automation/upload_existing.py --pasta "pasta_com_videos" --sem-upload
+```
+
 ---
 
 ## 📈 Histórico de Melhorias e Evolução da Arquitetura
@@ -72,7 +98,7 @@ O ShortBot nasceu de uma prova de conceito básica e evoluiu para tentar "hackea
 - Criação do pipeline básico linear: Input de Tema -> LLM Local (Ollama) -> Edge-TTS -> Imagens/Vídeos Pexels simples -> Edição estática com Ken Burns -> Upload via YouTube API.
 - Funcionalidade principal pautada em automação de custo 0 rodando na própria máquina.
 
-### ✅ Versão 2.0 (Foco Completo em Retenção - Atual)
+### ✅ Versão 2.0 (Foco Completo em Retenção)
 - **Dinamismo Visual [Melhorias 1.1 e 1.2]:** Injeção de B-Rolls dinâmicos baseados em recortes curtos (2s a 4s) para prender a atenção.
 - **Qualidade Sensorial [Melhorias 1.3 e 1.4]:** Arquitetura Multi-API de fallback para TTS avançado (ElevenLabs > OpenAI > Edge-TTS).
 - **Roteiros Mais Engajantes [Melhorias 1.5 e 1.6]:** Separação de funções do LLM (Llama para a "criatividade solta e viral" e GPT para "direção técnica e extração do JSON") e integração de trilha sonora adaptativa.
@@ -80,6 +106,8 @@ O ShortBot nasceu de uma prova de conceito básica e evoluiu para tentar "hackea
 
 ### 🔮 Versão 3.0 (A Máquina Definitiva - Atual)
 - [x] **Dominação Multi-Plataforma:** Publicação unificada no **TikTok** e **YouTube** via API Oficial (com fluxo OAuth 2.0 resiliente e bypass de limitações locais com Localtunnel).
+- [x] **Motor de Analytics & Retroalimentação Viral:** Sistema que consome os Analytics das próprias postagens públicas via scraper resiliente e instrui o LLM a equilibrar a geração (50% aproveitamento de temas de sucesso / 50% exploração de novos públicos).
+- [x] **Orquestração e Automação via n8n & WhatsApp**: Integração com n8n local e CallMeBot para disparar relatórios semanais de performance diretamente no WhatsApp todo sábado às 20h, e acionar a geração de 5 shorts em lote todo domingo às 10h.
+- [x] **Utilitário de Upload de Vídeos Existentes (`upload_existing.py`)**: Script CLI flexível para upload individual ou em lote de vídeos pré-gerados com associação automática de metadados JSON e thumbnails.
 - [ ] **Efeitos Sonoros (SFX) Sincronizados:** O texto indicará palavras-chave para acionar Efeitos Sonoros exatos no frame em que a legenda aparece (ex: Som de moeda na palavra "Dinheiro").
-- [ ] **Motor de Analytics & Retroalimentação Viral:** Sistema que consome os Analytics das próprias postagens e instrui o LLM a reproduzir automaticamente os temas que deram as maiores taxas de visualização no seu nicho.
 - [ ] **Painel de Controle (Web Dashboard):** Criação de uma interface gráfica rodando localmente (FastAPI/Streamlit) para abandonar a dependência estrita do terminal, facilitando visualização do calendário e custos de API.

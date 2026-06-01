@@ -18,6 +18,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 XAI_API_KEY = os.getenv("XAI_API_KEY", "")          # Grok (xAI) — script generator primário
 KLING_ACCESS_KEY = os.getenv("KLING_ACCESS_KEY", "") # Kling AI API - Access Key
 KLING_SECRET_KEY = os.getenv("KLING_SECRET_KEY", "") # Kling AI API - Secret Key
+
 # Vozes padrão
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJcg") # Voz masculina padrão (Adam)
 OPENAI_VOICE = os.getenv("OPENAI_VOICE", "echo")

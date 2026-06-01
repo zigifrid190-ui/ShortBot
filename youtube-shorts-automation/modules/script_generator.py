@@ -56,21 +56,20 @@ def _refinar_com_gpt(rascunho: str, tema: str) -> dict:
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
 
     system_prompt = """Você é um DIRETOR DE PRODUÇÃO de YouTube Shorts (Especialista em Algoritmo 2026). Você recebe um rascunho de roteiro e deve:
-1. VERIFICAR que o gancho (primeiras 2 frases) contém a PALAVRA-CHAVE do tema. Se não contiver, reescreva o gancho incluindo a palavra-chave. O espectador PRECISA saber o assunto nos primeiros 3 segundos.
-2. VERIFICAR que o roteiro conta UMA ÚNICA história/caso com profundidade. Se listar múltiplos exemplos superficiais, reescreva focando no mais interessante com 3 atos (O que aconteceu → O que descobriram → O que nunca explicaram).
-3. VERIFICAR que o CTA tem NO MÁXIMO 5 palavras (ex: "Curte e se inscreve."). Se for maior, encurte.
+1. VERIFICAR que o gancho (primeiras 2 frases) contém a PALAVRA-CHAVE do tema e funciona como um gancho de choque. O espectador PRECISA saber o assunto e se assustar nos primeiros 3 segundos.
+2. VERIFICAR que o roteiro conta UMA ÚNICA história/caso com profundidade (O que aconteceu → O que descobriram → O que nunca explicaram). Evite desinformação ou boatos sem embasamento factual.
+3. AJUSTAR o final do roteiro para terminar obrigatoriamente com uma pergunta direta que instigue o espectador a comentar (ex: "Qual desses fatos te chocou mais? Comenta aí!"), seguida por um CTA curto (ex: "Dá um like e se inscreve!").
 4. Ajustar o texto para ter ENTRE 80 e 120 palavras (30-45 segundos de fala).
-5. Corrigir erros factuais óbvios. Manter o tom coloquial brasileiro.
-6. Gerar 3 a 5 termos de busca em inglês para encontrar VÍDEOS de stock (B-Roll) no Pexels. Os termos devem ser ESPECÍFICOS à história contada no roteiro, com foco em MOVIMENTO e AÇÃO.
-7. Criar um Título Otimizado (Descritivo + palavra-chave do tema + emoção). Exemplo: "O navio que encontraram vazio no oceano 😱".
-8. Criar uma Descrição Otimizada (Palavras-chave + hashtags do nicho).
+5. Gerar 3 a 5 termos de busca em inglês para encontrar VÍDEOS de stock (B-Roll) no Pexels. Os termos devem ser ESPECÍFICOS, focando em MOVIMENTO e AÇÃO.
+6. OBRIGATORIAMENTE Criar um Título Otimizado (`titulo_youtube`) que comece com o emoji "🔥" ou "😱", seguido de um número (ex: "5 fatos...") ou pela estrutura "Você não sabia que..." ou "O mistério de...". Exemplo: "😱 3 mistérios do oceano que a ciência esconde".
+7. Criar uma Descrição Otimizada (Palavras-chave + hashtags relevantes do nicho).
 
 Retorne APENAS JSON no formato:
 {
-  "roteiro_texto": "O texto final para narração...",
+  "roteiro_texto": "O texto final para narração (com a pergunta e CTA inclusos)...",
   "busca_videos": ["termo1 em ingles", "termo2", "termo3"],
   "clima_da_musica": "tipo da musica de fundo",
-  "titulo_youtube": "Título Viral com emoção",
+  "titulo_youtube": "Título iniciando com 🔥 ou 😱",
   "descricao_youtube": "Descrição com hashtags relevantes"
 }"""
 
@@ -175,6 +174,59 @@ def _gerar_roteiro_ollama(prompt: str) -> dict:
 
 
 # ============================================================
+# HUMANIZADOR DE ROTEIRO (Human Colloquial PT-BR Writer)
+# ============================================================
+
+def _humanizar_roteiro(roteiro_texto: str, tema: str) -> str:
+    """
+    Utiliza as regras da skill 'Human Colloquial PT-BR Writer' para reescrever
+    o roteiro de forma extremamente natural, coloquial e humana.
+    A dosagem de gírias é ajustada automaticamente baseado no tema e contexto.
+    """
+    if not OPENAI_API_KEY or OPENAI_API_KEY == "sua_chave_aqui":
+        return roteiro_texto
+        
+    log.info("✍️ Humanizando o roteiro (Human Colloquial PT-BR Writer)...")
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+    
+    human_system_prompt = f"""Você é um especialista em Português Coloquial Brasileiro (Human Colloquial PT-BR Writer).
+Seu objetivo é reescrever o roteiro fornecido para que ele soe 100% natural, falado por uma pessoa real de 25-40 anos.
+
+O tema do vídeo é: "{tema}"
+
+Ajuste a dosagem de gírias e o tom de acordo com o contexto do tema:
+- Para temas científicos, históricos ou técnicos (ex: astronomia, dinossauros, mistérios inexplicados, fatos históricos): use um tom de conversação instigante e curioso (como um cientista ou entusiasta explicando para um amigo). Use contrações naturais ("pra", "pro", "tá", "né?"), mas evite gírias pesadas ou forçadas (como "mano", "parça").
+- Para temas cotidianos, curiosidades gerais, produtividade ou comportamento: use um tom mais relaxado e casual, com uso sutil de gírias leves (como "cara", "sério", "fala sério", "tipo assim") de forma muito natural.
+
+Regras Gerais Absolutas:
+1. Elimine QUALQUER indício de IA: termos como "além disso", "é importante ressaltar", "no entanto", "proporciona", "fundamental", "portanto", "com isso", "assim sendo", "em contrapartida".
+2. Varie o ritmo das frases: misture frases muito curtas e diretas com explicações fluidas.
+3. Se houver ganchos polêmicos ou reações, faça parecer que o locutor realmente tem uma opinião ou sentimento real sobre o assunto ("cara, isso me pegou", "sinceramente", "eu acho que").
+4. Não use listas perfeitas ou estruturas engessadas (ex: "Primeiro...", "Segundo..."). Fale como quem conta uma fofoca ou um fato incrível para um amigo.
+
+Retorne APENAS o texto humanizado final para locução. Sem explicações, sem formatação JSON, sem aspas adicionais, apenas o texto falado puro."""
+
+    data = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": human_system_prompt},
+            {"role": "user", "content": f"Reescreva o seguinte roteiro mantendo rigorosamente a mesma duração aproximada (entre 80 e 120 palavras):\n\n{roteiro_texto}"}
+        ],
+        "temperature": 0.75
+    }
+    try:
+        response = requests.post(url, json=data, headers=headers, timeout=30)
+        response.raise_for_status()
+        texto_humanizado = response.json()["choices"][0]["message"]["content"].strip()
+        log.info("✨ Roteiro humanizado com sucesso!")
+        return texto_humanizado
+    except Exception as e:
+        log.error(f"Erro ao humanizar roteiro: {e}")
+        return roteiro_texto
+
+
+# ============================================================
 # FUNÇÃO PRINCIPAL
 # ============================================================
 
@@ -183,6 +235,7 @@ def gerar_roteiro(tema: str) -> dict:
     Gera roteiro viral com pipeline Multi-Agente:
     1. Llama 3 (Groq) cria rascunho criativo agressivo
     2. GPT-4o-mini refina, ajusta tempo e extrai JSON de produção
+    3. Humanizer (GPT-4o-mini) aplica regras de escrita coloquial humana
     
     Fallbacks: OpenAI solo -> Groq solo -> Ollama
     """
@@ -206,25 +259,31 @@ def gerar_roteiro(tema: str) -> dict:
     prompt_solo = prompt_template.format(tema=tema) + json_instructions
     log.info(f"Gerando roteiro para o tema: {tema}")
 
+    resultado = None
+
     # === PIPELINE MULTI-AGENTE (Llama 3 + GPT-4o) ===
     rascunho = _gerar_rascunho_groq(prompt_template.format(tema=tema))
     if rascunho:
         resultado = _refinar_com_gpt(rascunho, tema)
         if resultado and "roteiro_texto" in resultado:
+            resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
             return resultado
         log.warning("GPT não conseguiu refinar. Tentando fallbacks solo...")
 
     # === FALLBACKS SOLO ===
     resultado = _gerar_roteiro_openai_solo(prompt_solo)
     if resultado and "roteiro_texto" in resultado:
+        resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
         return resultado
 
     resultado = _gerar_roteiro_groq_solo(prompt_solo)
     if resultado and "roteiro_texto" in resultado:
+        resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
         return resultado
 
     resultado = _gerar_roteiro_ollama(prompt_solo)
     if resultado and "roteiro_texto" in resultado:
+        resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
         return resultado
 
     # Fallback de emergência
@@ -234,6 +293,7 @@ def gerar_roteiro(tema: str) -> dict:
         "busca_videos": [f"{tema}"],
         "clima_da_musica": "calm ambient"
     }
+
 
 
 def carregar_roteiro_arquivo(caminho: str) -> dict:

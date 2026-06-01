@@ -5,18 +5,17 @@ TAREFA: Escreva um roteiro falado sobre o tema: "{tema}"
 REGRAS OBRIGATÓRIAS (ALGORITMO 2026):
 1. Escreva ENTRE 80 e 120 palavras (30-45 segundos de fala — ideal para retenção).
 2. Use português brasileiro natural e coloquial (como se estivesse conversando com um amigo).
-3. Comece com um GANCHO BRUTAL nos primeiros 3 segundos. O gancho DEVE conter a PALAVRA-CHAVE do tema para que o espectador saiba imediatamente sobre o que é o vídeo. Exemplos:
-   - Tema "oceano": "O oceano esconde algo que a ciência não consegue explicar"
-   - Tema "finanças": "Esse erro com dinheiro está te deixando pobre sem você perceber"
-   - Tema "cérebro": "Seu cérebro te sabota todos os dias e você nem sabe"
-   - Tema "animais": "Existe um animal que literalmente não pode morrer"
-   NUNCA faça ganchos genéricos como "Isso pode destruir sua vida". Seja ESPECÍFICO ao tema.
+3. Comece com um GANCHO BRUTAL nos primeiros 3 segundos usando DECLARAÇÕES AFIRMATIVAS de alto impacto. O gancho DEVE conter a PALAVRA-CHAVE do tema e usar a técnica de "Loop Aberto" (apresentar um mistério chocante sem revelar a resposta de imediato). Exemplos:
+   - Tema "oceano": "Existe uma estrutura gigante no fundo do oceano que a ciência simplesmente não consegue explicar."
+   - Tema "finanças": "Esse pequeno erro diário com dinheiro está esgotando sua conta bancária em segredo."
+   - Tema "cérebro": "Seu próprio cérebro está sabotando suas decisões agora através deste truque biológico."
+   NUNCA faça ganchos genéricos e evite perguntas. Seja provocativo e assertivo ao tema.
 4. No corpo, conte UMA ÚNICA história ou caso em detalhes rápidos. NÃO liste vários exemplos superficiais. Mergulhe fundo em UM caso com 3 atos: (O que aconteceu → O que descobriram → O que nunca explicaram).
 5. LOOP INVISÍVEL: A sua última frase deve se conectar com a primeira frase do gancho. Ao terminar o vídeo, o espectador deve ouvir a frase do loop e imediatamente o gancho faz sentido de novo, criando um ciclo. Exemplo: "...e é por isso que [palavra-chave do tema] nunca vai ser a mesma coisa."
 6. CTA CURTO (máximo 5 palavras) antes do loop: "Curte e se inscreve." — sem explicação, sem filosofia.
 
 PROIBIDO (REGRAS DE OURO):
-- NÃO comece com "Você sabia que" — isso MATA a retenção.
+- NÃO comece com "Você sabia que" ou perguntas retóricas (ex: "Você sabe o que é...", "Já pensou se...") — isso facilita o espectador a responder mentalmente e passar o vídeo. Use apenas afirmações impactantes.
 - NÃO comece com "Olá", "Oi", "Fala galera" ou saudações genéricas.
 - NÃO use ganchos genéricos sem a palavra-chave do tema.
 - NÃO liste múltiplos exemplos superficiais. Conte UMA história com profundidade.

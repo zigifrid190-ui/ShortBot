@@ -95,17 +95,37 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
         else:
             titulo_yt = roteiro_json.get("titulo_youtube")
             descricao_yt = roteiro_json.get("descricao_youtube")
-            upload_youtube(
-                video_final, 
-                thumb, 
-                roteiro_texto, 
-                tema=tema, 
-                publish_at=publish_at,
-                titulo_youtube=titulo_yt,
-                descricao_youtube=descricao_yt
-            )
+            
+            # --- UPLOAD YOUTUBE (Isolado de falhas externas) ---
+            try:
+                upload_youtube(
+                    video_final, 
+                    thumb, 
+                    roteiro_texto, 
+                    tema=tema, 
+                    publish_at=publish_at,
+                    titulo_youtube=titulo_yt,
+                    descricao_youtube=descricao_yt
+                )
+            except Exception as e:
+                log.error(f"Falha durante o upload do YouTube: {e}")
+                log.error(traceback.format_exc())
 
-        log.info(f"Short #{index} concluído com sucesso!")
+            # --- UPLOAD TIKTOK (API Oficial v2 - Isolado de falhas externas) ---
+            try:
+                from modules.tiktok_uploader import upload_tiktok
+                upload_tiktok(
+                    video_final, 
+                    roteiro_texto, 
+                    tema=tema, 
+                    publish_at=publish_at,
+                    legenda_personalizada=titulo_yt
+                )
+            except Exception as e:
+                log.error(f"Falha durante o upload do TikTok: {e}")
+                log.error(traceback.format_exc())
+
+        log.info(f"Short #{index} concluído!")
         return True
 
     except Exception as e:
@@ -215,13 +235,14 @@ def executar_lote(temas: list, quantidade_por_tema: int = 1, um_por_dia: bool = 
 def job_automatico(quantidade: int, skip_upload: bool, um_por_dia: bool = False):
     """Job que roda automaticamente: busca temas virais e gera shorts."""
     log.info("="*60)
-    log.info("MODO AUTOMÁTICO: Buscando temas virais...")
+    log.info("MODO AUTOMÁTICO: Buscando temas de alto desempenho...")
     log.info("="*60)
     
     try:
-        temas = obter_temas_virais(quantidade=quantidade)
+        from modules.trend_scraper import obter_temas_por_desempenho
+        temas = obter_temas_por_desempenho(quantidade=quantidade)
         if not temas:
-            log.error("Nenhum tema viral encontrado. Pulando esta execução.")
+            log.error("Nenhum tema encontrado. Pulando esta execução.")
             return
         
         executar_lote(
@@ -233,6 +254,7 @@ def job_automatico(quantidade: int, skip_upload: bool, um_por_dia: bool = False)
     except Exception as e:
         log.error(f"Erro no job automático: {e}")
         log.error(traceback.format_exc())
+
 
 
 def main():

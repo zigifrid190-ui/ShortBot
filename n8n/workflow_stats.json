@@ -1,0 +1,194 @@
+{
+  "name": "ShortBot - Analytics & Performance",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": "0 20 * * 6"
+      },
+      "id": "1e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Schedule Trigger (Cron - Saturday)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8089/run",
+        "options": {}
+      },
+      "id": "2e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Run Scraper (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const stats = $input.all().map(item => item.json);\n\n// Filtra vídeos ativos\nconst ativos = stats.filter(v => v.status === \"Ativo\");\nconst totalVideos = stats.length;\nconst topVideo = ativos[0] || { title: \"Nenhum\", views: 0 };\n\n// Função segura para cortar string sem quebrar pares de surrogates (emojis)\nconst sliceTitle = (str, limit) => {\n  if (!str) return \"\";\n  const arr = [...str];\n  return arr.length > limit ? arr.slice(0, limit - 3).join(\"\") + \"...\" : str;\n};\n\n// Média de views e engajamento dos TOP 5\nconst top5 = ativos.slice(0, 5);\nlet sumViews = 0;\nlet sumEngagement = 0;\ntop5.forEach(v => {\n  sumViews += v.views || 0;\n  sumEngagement += v.engagement || 0;\n});\nconst avgViewsTop5 = top5.length ? Math.round(sumViews / top5.length) : 0;\nconst avgEngageTop5 = top5.length ? (sumEngagement / top5.length).toFixed(2) : \"0.00\";\n\n// Lista dos TOP 3\nlet top3List = \"\";\ntop5.slice(0, 3).forEach((v, i) => {\n  const emojiNumber = [\"1️⃣\", \"2️⃣\", \"3️⃣\"][i];\n  top3List += `${emojiNumber} *${sliceTitle(v.title, 35)}*\\n   👁️ *${v.views}* views | 📊 *${v.engagement.toFixed(1)}%* engaj.\\n`;\n});\n\n// Constrói a mensagem\nlet msg = `📊 *ShortBot - Relatório de Desempenho ManoSabio*\\n\\n`;\nmsg += `📈 *Status Geral do Canal*:\\n`;\nmsg += `• Total de Vídeos: *${totalVideos}*\\n`;\nmsg += `• Melhor Vídeo: *${sliceTitle(topVideo.title, 40)}* (*${topVideo.views}* views)\\n\\n`;\n\nmsg += `🏆 *TOP 3 Shorts mais Assistidos*:\\n${top3List}\\n`;\n\nmsg += `🔥 *Métricas Médias (TOP 5)*:\\n`;\nmsg += `• Média de Views: *${avgViewsTop5}*\\n`;\nmsg += `• Média de Engajamento: *${avgEngageTop5}%*\\n\\n`;\n\nmsg += `💡 *Sugestão de Temas*:\\n`;\nmsg += `• Rodar \\`python main.py --auto 4\\` para gerar 4 novos Shorts de forma automática. O motor irá equilibrar 50% de temas vencedores e 50% de novos testes de nicho para expandir sua audiência! 🚀`;\n\nreturn {\n  msg: encodeURIComponent(msg)\n};"
+      },
+      "id": "5e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Format Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.callmebot.com/whatsapp.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "5598985626885"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.msg }}"
+            },
+            {
+              "name": "apikey",
+              "value": "3982252"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Send WhatsApp (CallMeBot)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": "0 10 * * 0"
+      },
+      "id": "7e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Schedule Trigger (Cron - Sunday)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8089/generate",
+        "options": {}
+      },
+      "id": "8e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Run Generator (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.callmebot.com/whatsapp.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "5598985626885"
+            },
+            {
+              "name": "text",
+              "value": "🤖 *ShortBot - Geração Iniciada*:\nA geração semanal de 5 novos Shorts (um por dia) foi iniciada e está sendo processada no Windows Host. Os vídeos serão agendados automaticamente nos horários de pico! 🚀"
+            },
+            {
+              "name": "apikey",
+              "value": "3982252"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e8a8a8a-e9fa-47c1-8408-e8db5d8c36df",
+      "name": "Notify Generation Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        450
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Cron - Saturday)": {
+      "main": [
+        [
+          {
+            "node": "Run Scraper (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Scraper (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Format Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp (CallMeBot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (Cron - Sunday)": {
+      "main": [
+        [
+          {
+            "node": "Run Generator (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Generator (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Notify Generation Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "4e8a8a8a-e9fa-47c1-8408-e8db5d8c36df"
+}

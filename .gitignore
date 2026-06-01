@@ -20,7 +20,11 @@ youtube-shorts-automation/assets/
 
 # Tokens de autenticação (sensível)
 token.pickle
+*token.pickle
+*.pickle
 client_secret.json
+*auth_state.json
+tiktok*.txt
 
 # Configurações do SO e IDE
 .vscode/
@@ -30,3 +34,9 @@ Thumbs.db
 
 # Antigravity Kit
 .agent/
+
+# Arquivos temporários e estatísticas dinâmicas
+youtube-shorts-automation/all_video_stats.json
+youtube-shorts-automation/temp_script.json
+youtube-shorts-automation/RoteiroC/
+

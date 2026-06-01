@@ -191,7 +191,7 @@ def _montar_clips_video(video_paths: list, duracao_total: float, target_w: int, 
     if not clips_carregados:
         raise RuntimeError("Nenhum clip de vídeo ou imagem pôde ser processado.")
 
-    # Preenche a timeline com cortes rápidos de 2-3s
+    # Preenche a timeline com cortes rápidos de 2-3s (e 1.0-1.5s no gancho inicial)
     tempo_acumulado = 0.0
     clip_index = 0
     zoom_directions = ["in", "out"]
@@ -200,9 +200,15 @@ def _montar_clips_video(video_paths: list, duracao_total: float, target_w: int, 
         clip = clips_carregados[clip_index % len(clips_carregados)]
         tempo_restante = duracao_total - tempo_acumulado
 
-        # Duração do segmento: entre MIN e MAX, sem exceder o que resta
+        # Algoritmo de Pacing 2026: ganchos (primeiros 3s) têm cortes frenéticos para reter o scroll
+        if tempo_acumulado < 3.0:
+            min_dur, max_dur = 1.0, 1.5
+        else:
+            min_dur, max_dur = MIN_CLIP_DURATION, MAX_CLIP_DURATION
+
+        # Duração do segmento: sem exceder o que resta
         seg_dur = min(
-            random.uniform(MIN_CLIP_DURATION, MAX_CLIP_DURATION),
+            random.uniform(min_dur, max_dur),
             tempo_restante + CROSSFADE,
             clip.duration
         )
@@ -248,9 +254,26 @@ def _montar_clips_video(video_paths: list, duracao_total: float, target_w: int, 
 
 def _gerar_sfx_whoosh():
     """
-    Gera um efeito sonoro 'whoosh' sintético caso não exista o arquivo swoosh.mp3.
-    Usa uma onda de ruído com fade rápido (150ms).
+    Tenta baixar um efeito sonoro de transição de alta qualidade do GitHub.
+    Se falhar, tenta gerar um efeito sintético de ruído branco.
     """
+    sfx_path = os.path.join(ASSETS_DIR, "swoosh_fallback.mp3")
+    
+    # 1. Tentar download do GitHub (button-0.mp3 do SoundManager2)
+    try:
+        log.info("Baixando SFX de transição (button-0.mp3) do GitHub...")
+        import requests
+        url = "https://github.com/scottschiller/soundmanager2/raw/master/demo/_mp3/button-0.mp3"
+        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        with open(sfx_path, 'wb') as f:
+            f.write(r.content)
+        log.info(f"SFX de transição baixado com sucesso: {sfx_path}")
+        return sfx_path
+    except Exception as e:
+        log.warning(f"Não foi possível baixar SFX do GitHub ({e}). Tentando síntese local...")
+
+    # 2. Fallback de geração sintética original
     duration = 0.15
     sample_rate = 44100
     samples = int(duration * sample_rate)
@@ -266,12 +289,11 @@ def _gerar_sfx_whoosh():
 
     audio_data = noise * envelope
 
-    # Salva como arquivo temporário
-    sfx_path = os.path.join(ASSETS_DIR, "_whoosh_generated.mp3")
+    gen_path = os.path.join(ASSETS_DIR, "_whoosh_generated.mp3")
     try:
         import soundfile as sf
-        sf.write(sfx_path, audio_data, sample_rate)
-        return sfx_path
+        sf.write(gen_path, audio_data, sample_rate)
+        return gen_path
     except ImportError:
         # Fallback: cria com scipy se disponível
         try:
@@ -280,6 +302,7 @@ def _gerar_sfx_whoosh():
             wavfile.write(wav_path, sample_rate, (audio_data * 32767).astype(np.int16))
             return wav_path
         except ImportError:
+            log.error("Não foi possível gerar som de transição sintético (sem soundfile ou scipy)")
             return None
 
 

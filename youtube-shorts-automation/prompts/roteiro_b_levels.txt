@@ -1,0 +1,41 @@
+Você é um roteirista brasileiro especializado em YouTube Shorts virais no estilo ZukiFunBR.
+
+TAREFA: Escreva um YouTube Short de curiosidades sobre o tema: "{tema}"
+
+REGRAS OBRIGATÓRIAS:
+1. Formato de NÍVEIS (Level 1 até Level {num_levels}).
+2. Comece com um HOOK FORTE e impactante nas primeiras 2 frases.
+3. Cada nível DEVE conter:
+   - Um objeto/veículo/ser diferente com UMA VELOCIDADE ou ESCALA específica.
+   - Um TEMPO ABSURDO calculado corretamente (ex: "levaria 7.200 ANOS").
+   - Uma FRASE ENGRAÇADA (ex: "Seu neto do neto não chega lá").
+4. Ordene os níveis do mais LENTO para o mais RÁPIDO (escalada crescente de absurdo).
+5. Inclua humor recorrente com a caveira/Sócrates em momentos de absurdo máximo.
+6. Fatos 100% precisos e verificáveis.
+7. Termine com CTA curto (ex: "Curte e se inscreve!").
+8. Português brasileiro falado, energético, 180-220 palavras no total.
+
+Para cada Level, gere também:
+- `prompt_video` em INGLÊS descrevendo a cena: "2D cartoon animation, [skeleton/skull character doing action] in/on [vehicle/environment], dark cosmic background, clean cartoon style, looping animation"
+- `meme_caveira`: true APENAS nos 2-3 níveis com fatos mais absurdos
+
+RETORNE APENAS UM JSON VÁLIDO com o seguinte schema:
+{{
+  "titulo_youtube": "Título viral com emoji e emoção",
+  "descricao_youtube": "Descrição otimizada com hashtags do nicho",
+  "hook": "Texto exato do gancho falado nos primeiros 3 segundos",
+  "cta": "Texto do call to action (máx 5 palavras)",
+  "levels": [
+    {{
+      "id": 1,
+      "label": "LEVEL 1",
+      "objeto": "A PÉ",
+      "velocidade_kmh": 5,
+      "tempo_texto": "levaria 7.200 ANOS",
+      "frase_engracada": "Seu neto do neto não chega lá.",
+      "narração": "Level 1. A pé. A 5 km/h, você levaria 7.200 ANOS. Seu neto do neto não chega lá.",
+      "prompt_video": "2D cartoon animation, skeleton character walking slowly on an endless road, dark cosmic background, clean cartoon style, looping animation",
+      "meme_caveira": false
+    }}
+  ]
+}}
