@@ -6,7 +6,7 @@ import time
 import traceback
 import schedule
 
-from config import ASSETS_DIR
+from config import ASSETS_DIR, DISABLE_TIKTOK
 from modules.logger import get_logger
 from modules.script_generator import gerar_roteiro, carregar_roteiro_arquivo
 from modules.audio_generator import gerar_audio, gerar_legendas_whisper
@@ -112,18 +112,21 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
                 log.error(traceback.format_exc())
 
             # --- UPLOAD TIKTOK (API Oficial v2 - Isolado de falhas externas) ---
-            try:
-                from modules.tiktok_uploader import upload_tiktok
-                upload_tiktok(
-                    video_final, 
-                    roteiro_texto, 
-                    tema=tema, 
-                    publish_at=publish_at,
-                    legenda_personalizada=titulo_yt
-                )
-            except Exception as e:
-                log.error(f"Falha durante o upload do TikTok: {e}")
-                log.error(traceback.format_exc())
+            if DISABLE_TIKTOK:
+                log.info("Upload para o TikTok desativado temporariamente via configuração (DISABLE_TIKTOK).")
+            else:
+                try:
+                    from modules.tiktok_uploader import upload_tiktok
+                    upload_tiktok(
+                        video_final, 
+                        roteiro_texto, 
+                        tema=tema, 
+                        publish_at=publish_at,
+                        legenda_personalizada=titulo_yt
+                    )
+                except Exception as e:
+                    log.error(f"Falha durante o upload do TikTok: {e}")
+                    log.error(traceback.format_exc())
 
         log.info(f"Short #{index} concluído!")
         return True
