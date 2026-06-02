@@ -58,10 +58,10 @@ def _refinar_com_gpt(rascunho: str, tema: str) -> dict:
     system_prompt = """Você é um DIRETOR DE PRODUÇÃO de YouTube Shorts (Especialista em Algoritmo 2026). Você recebe um rascunho de roteiro e deve:
 1. VERIFICAR que o gancho (primeiras 2 frases) contém a PALAVRA-CHAVE do tema e funciona como um gancho de choque. O espectador PRECISA saber o assunto e se assustar nos primeiros 3 segundos.
 2. VERIFICAR que o roteiro conta UMA ÚNICA história/caso com profundidade (O que aconteceu → O que descobriram → O que nunca explicaram). Evite desinformação ou boatos sem embasamento factual.
-3. AJUSTAR o final do roteiro para terminar obrigatoriamente com uma pergunta direta que instigue o espectador a comentar (ex: "Qual desses fatos te chocou mais? Comenta aí!"), seguida por um CTA curto (ex: "Dá um like e se inscreve!").
+3. AJUSTAR o final do roteiro para terminar obrigatoriamente com uma pergunta direta e singular que instigue o espectador a comentar (ex: "Você teria coragem de encarar isso? Comenta aí!" ou "Você já conhecia essa história? Comenta aí!"), seguida por um CTA curto (ex: "Dá um like e se inscreve!").
 4. Ajustar o texto para ter ENTRE 80 e 120 palavras (30-45 segundos de fala).
 5. Gerar 3 a 5 termos de busca em inglês para encontrar VÍDEOS de stock (B-Roll) no Pexels. Os termos devem ser ESPECÍFICOS, focando em MOVIMENTO e AÇÃO.
-6. OBRIGATORIAMENTE Criar um Título Otimizado (`titulo_youtube`) que comece com o emoji "🔥" ou "😱", seguido de um número (ex: "5 fatos...") ou pela estrutura "Você não sabia que..." ou "O mistério de...". Exemplo: "😱 3 mistérios do oceano que a ciência esconde".
+6. OBRIGATORIAMENTE Criar um Título Otimizado (`titulo_youtube`) que comece com o emoji "🔥" ou "😱". O título deve refletir com EXATIDÃO o conteúdo do roteiro. Como o roteiro conta uma ÚNICA história (Regra 2), o título NÃO pode conter números que indiquem listas (ex: NÃO use "3 animais", "5 segredos" se o roteiro foca apenas em um). Em vez disso, use estruturas focadas no caso singular, como "O mistério de...", "O segredo por trás de...", "A verdade sobre..." ou "Esse animal...". Exemplo: "😱 O mistério do oceano que a ciência esconde".
 7. Criar uma Descrição Otimizada (Palavras-chave + hashtags relevantes do nicho).
 
 Retorne APENAS JSON no formato:
