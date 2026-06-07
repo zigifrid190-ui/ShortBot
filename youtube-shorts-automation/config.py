@@ -36,6 +36,11 @@ RETRY_DELAY_SECONDS = 2
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
+# Adiciona o diretório base ao PATH para que o ffmpeg.exe local seja encontrado por subprocessos (como o Whisper)
+if BASE_DIR not in os.environ["PATH"]:
+    os.environ["PATH"] = BASE_DIR + os.pathsep + os.environ["PATH"]
+
+
 # === API Oficial do TikTok ===
 TIKTOK_CLIENT_KEY = os.getenv("TIKTOK_CLIENT_KEY", "")
 TIKTOK_CLIENT_SECRET = os.getenv("TIKTOK_CLIENT_SECRET", "")

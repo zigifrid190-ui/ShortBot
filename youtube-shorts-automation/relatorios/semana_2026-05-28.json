@@ -1,0 +1,73 @@
+{
+  "gerado_em": "2026-06-04T18:12:46.171419",
+  "periodo_inicio": "2026-05-28",
+  "periodo_fim": "2026-06-04",
+  "total_videos": 2,
+  "views_totais": 2730,
+  "likes_totais": 81,
+  "comments_totais": 1,
+  "media_engagement_pct": 2.98,
+  "media_quality_score": null,
+  "top_3": [
+    {
+      "titulo": "A anomalia inexplicável da Cratera de Tycho 😲",
+      "tema": "a anomalia da cratera de tycho",
+      "views": 1469,
+      "likes": 48,
+      "comments": 1,
+      "engagement_pct": 3.34,
+      "viral_rate_pct": 3.27,
+      "quality_score": null,
+      "video_id": "YESVDc6LvrA"
+    },
+    {
+      "titulo": "😱 3 animais venenosos mais estranhos do mundo!",
+      "tema": "animais venenosos mais estranhos do mundo",
+      "views": 1261,
+      "likes": 33,
+      "comments": 0,
+      "engagement_pct": 2.62,
+      "viral_rate_pct": 2.62,
+      "quality_score": null,
+      "video_id": "TQKbB2pZcO8"
+    }
+  ],
+  "bottom_3": [
+    {
+      "titulo": "😱 3 animais venenosos mais estranhos do mundo!",
+      "tema": "animais venenosos mais estranhos do mundo",
+      "views": 1261,
+      "likes": 33,
+      "engagement_pct": 2.62,
+      "viral_rate_pct": 2.62,
+      "quality_score": null,
+      "video_id": "TQKbB2pZcO8"
+    },
+    {
+      "titulo": "A anomalia inexplicável da Cratera de Tycho 😲",
+      "tema": "a anomalia da cratera de tycho",
+      "views": 1469,
+      "likes": 48,
+      "engagement_pct": 3.34,
+      "viral_rate_pct": 3.27,
+      "quality_score": null,
+      "video_id": "YESVDc6LvrA"
+    }
+  ],
+  "alertas": [
+    "✅ Nenhum alerta crítico esta semana."
+  ],
+  "recomendacoes": [
+    "🔧 Roteiro com pior engajamento: '😱 3 animais venenosos mais estranhos do mundo!' (1261 views). Analise a estrutura do gancho e evite repetir.",
+    "✅ Melhor desempenho: 'A anomalia inexplicável da Cratera de Tycho 😲' (1469 views). Explore variações deste tema/ângulo."
+  ],
+  "historico_4_semanas": [
+    {
+      "semana": "2026-05-28",
+      "total_videos": 2,
+      "views_totais": 2730,
+      "media_quality_score": null,
+      "alertas": 1
+    }
+  ]
+}

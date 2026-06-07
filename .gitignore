@@ -40,3 +40,8 @@ youtube-shorts-automation/all_video_stats.json
 youtube-shorts-automation/temp_script.json
 youtube-shorts-automation/RoteiroC/
 
+# Scratch e Binários
+scratch/
+*.mp4
+
+

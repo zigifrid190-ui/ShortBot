@@ -1,11 +1,49 @@
 import os
 import json
 import random
+import time
 import requests
 from config import BASE_DIR, OPENAI_API_KEY
 from modules.logger import get_logger
 
 log = get_logger("trend_scraper")
+
+# Cache de temas recentes para evitar repetição nas últimas 48h
+_CACHE_PATH = os.path.join(BASE_DIR, "last_themes_cache.json")
+_CACHE_TTL_HOURS = 48
+
+
+def _load_recent_themes() -> list:
+    """Carrega temas usados nas últimas 48h do cache local."""
+    if not os.path.exists(_CACHE_PATH):
+        return []
+    try:
+        with open(_CACHE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        cutoff = time.time() - (_CACHE_TTL_HOURS * 3600)
+        return [entry["tema"] for entry in data if entry.get("ts", 0) > cutoff]
+    except Exception:
+        return []
+
+
+def _save_themes_to_cache(temas: list) -> None:
+    """Salva temas gerados no cache com timestamp."""
+    existing = []
+    if os.path.exists(_CACHE_PATH):
+        try:
+            with open(_CACHE_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except Exception:
+            existing = []
+    cutoff = time.time() - (_CACHE_TTL_HOURS * 3600)
+    existing = [e for e in existing if e.get("ts", 0) > cutoff]
+    for tema in temas:
+        existing.append({"tema": tema, "ts": time.time()})
+    try:
+        with open(_CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(existing, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log.warning(f"Erro ao salvar cache de temas: {e}")
 
 # Categorias de nicho purificadas de alta performance (Grok/Ares aprovam)
 NICHOS_VIRAIS = [
@@ -64,37 +102,50 @@ def _buscar_trends_serpapi() -> list:
 def obter_temas_virais(quantidade: int = 5, nicho: str = None) -> list:
     """
     Retorna lista de temas virais para gerar shorts.
-    Prioridade: Google Trends -> Nichos Curados (interno).
-    
+    Prioridade: Tema do dia (themes.py) -> Google Trends -> Nichos Curados.
+
     Args:
         quantidade: Número de temas para retornar.
         nicho: Se fornecido, filtra/prioriza temas desse nicho.
     """
+    from themes import get_theme_for_today
+
     temas = []
-    
-    # 1. Tenta buscar tendências reais do Google
+    recentes = _load_recent_themes()
+
+    # 1. Garante o tema do dia como primeiro item
+    tema_dia = get_theme_for_today()
+    if tema_dia not in recentes:
+        temas.append(tema_dia)
+        log.info(f"Tema do dia adicionado: {tema_dia}")
+    else:
+        log.info(f"Tema do dia já foi usado recentemente, usando como contexto apenas.")
+
+    # 2. Tenta buscar tendências reais do Google
     trends = _buscar_trends_google()
     if trends:
-        # Pega até metade da quantidade de trends reais
         metade = max(1, quantidade // 2)
-        selecionados = random.sample(trends, min(metade, len(trends)))
+        # Filtra trends que não foram usados recentemente
+        novos_trends = [t for t in trends if t not in recentes]
+        selecionados = random.sample(novos_trends, min(metade, len(novos_trends))) if novos_trends else []
         temas.extend(selecionados)
         log.info(f"Selecionados {len(selecionados)} temas do Google Trends.")
-    
-    # 2. Complementa com nichos virais curados
+
+    # 3. Complementa com nichos virais curados (filtra recentes)
     faltam = quantidade - len(temas)
     if faltam > 0:
         pool = NICHOS_VIRAIS.copy()
         if nicho:
-            # Filtra nichos que contenham a palavra-chave do nicho
             filtrados = [n for n in pool if nicho.lower() in n.lower()]
             if filtrados:
                 pool = filtrados
-        
-        complemento = random.sample(pool, min(faltam, len(pool)))
+        pool_novo = [n for n in pool if n not in recentes] or pool
+        complemento = random.sample(pool_novo, min(faltam, len(pool_novo)))
         temas.extend(complemento)
         log.info(f"Complementados com {len(complemento)} temas de nichos curados.")
-    
+
+    temas = temas[:quantidade]
+    _save_themes_to_cache(temas)
     log.info(f"Temas finais selecionados ({len(temas)}): {temas}")
     return temas
 

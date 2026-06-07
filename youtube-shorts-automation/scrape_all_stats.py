@@ -13,10 +13,19 @@ def extract_videos_from_logs():
     videos = {}
     log_files = glob.glob(os.path.join(LOGS_DIR, "*.log"))
     
+    from datetime import datetime, timedelta
+    cutoff_date = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    
     for filepath in sorted(log_files):
         filename = os.path.basename(filepath)
         log_date = filename.replace(".log", "")
         
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", log_date):
+            continue
+            
+        if log_date < cutoff_date:
+            continue
+            
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
             
@@ -174,9 +183,24 @@ def parse_short_page(video_id):
 
 def main():
     videos = extract_videos_from_logs()
-    print(f"Total de {len(videos)} videos encontrados nos logs.")
+    print(f"Total de {len(videos)} videos recentes (ultimos 14 dias) encontrados nos logs.")
     
-    results = []
+    output_path = os.path.join(BASE_DIR, "all_video_stats.json")
+    
+    # Carrega dados existentes
+    existing_stats = {}
+    if os.path.exists(output_path):
+        try:
+            with open(output_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for item in data:
+                    if "video_id" in item:
+                        existing_stats[item["video_id"]] = item
+        except Exception as e:
+            print(f"Erro ao carregar dados antigos: {e}")
+            
+    results_map = existing_stats.copy()
+    
     for idx, v in enumerate(videos):
         v_id = v["video_id"]
         print(f"[{idx+1}/{len(videos)}] Raspando {v_id} ({v['theme']})...")
@@ -188,12 +212,10 @@ def main():
             likes = info["likes"]
             comments = info["comments"]
             
-            # Taxa de viralização: Likes / Views (%)
             viral_rate = (likes / views * 100) if views > 0 else 0.0
-            # Engajamento: (Likes + Comments) / Views (%)
             engagement = ((likes + comments) / views * 100) if views > 0 else 0.0
             
-            results.append({
+            results_map[v_id] = {
                 "video_id": v_id,
                 "theme": v["theme"],
                 "logged_at": v["logged_at"],
@@ -205,28 +227,31 @@ def main():
                 "viral_rate": viral_rate,
                 "engagement": engagement,
                 "status": "Ativo"
-            })
+            }
         else:
-            results.append({
-                "video_id": v_id,
-                "theme": v["theme"],
-                "logged_at": v["logged_at"],
-                "title": f"[Indisponível] {v['theme']}",
-                "views": 0,
-                "likes": 0,
-                "comments": 0,
-                "published_date": "Desconhecida",
-                "viral_rate": 0.0,
-                "engagement": 0.0,
-                "status": f"Erro ({info.get('status', 'Unknown')})"
-            })
+            # Se nao conseguiu raspar mas ja existia dado, mantem o antigo
+            if v_id in existing_stats:
+                print(f"  Falha ao raspar, mantendo dados anteriores para {v_id}")
+            else:
+                results_map[v_id] = {
+                    "video_id": v_id,
+                    "theme": v["theme"],
+                    "logged_at": v["logged_at"],
+                    "title": f"[Indisponível] {v['theme']}",
+                    "views": 0,
+                    "likes": 0,
+                    "comments": 0,
+                    "published_date": "Desconhecida",
+                    "viral_rate": 0.0,
+                    "engagement": 0.0,
+                    "status": f"Erro ({info.get('status', 'Unknown')})"
+                }
         
-        # Cooldown leve para nao bloquear IP
         time.sleep(1.0)
         
-    results.sort(key=lambda x: x["views"], reverse=True)
+    results = list(results_map.values())
+    results.sort(key=lambda x: x.get("views", 0), reverse=True)
     
-    output_path = os.path.join(BASE_DIR, "all_video_stats.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
         

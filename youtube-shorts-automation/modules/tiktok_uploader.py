@@ -273,6 +273,18 @@ def upload_tiktok(video_path: str, roteiro: str, tema: str = "", publish_at: str
     upload_url = None
     publish_id = None
 
+    # Calcular tamanho do chunk e quantidade de chunks de acordo com as especificações do TikTok
+    import math
+    MIN_CHUNK_SIZE = 5 * 1024 * 1024       # 5 MB
+    DEFAULT_CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB
+
+    if video_size < MIN_CHUNK_SIZE:
+        resolved_chunk_size = video_size
+        total_chunk_count = 1
+    else:
+        resolved_chunk_size = DEFAULT_CHUNK_SIZE
+        total_chunk_count = max(1, math.floor(video_size / resolved_chunk_size))
+
     for privacy in privacy_levels:
         body = {
             "post_info": {
@@ -286,8 +298,8 @@ def upload_tiktok(video_path: str, roteiro: str, tema: str = "", publish_at: str
             "source_info": {
                 "source": "FILE_UPLOAD",
                 "video_size": video_size,
-                "chunk_size": video_size,
-                "total_chunk_count": 1
+                "chunk_size": resolved_chunk_size,
+                "total_chunk_count": total_chunk_count
             }
         }
 
@@ -312,24 +324,37 @@ def upload_tiktok(video_path: str, roteiro: str, tema: str = "", publish_at: str
         log.error("Falha fatal na inicialização do post do TikTok em todos os níveis de privacidade.")
         return False
 
-    # 2. Upload do binário via PUT
-    log.info("Iniciando envio do arquivo binário para a CDN do TikTok...")
+    # 2. Upload do binário via PUT em chunks sequenciais
+    log.info(f"Iniciando envio do arquivo binário em {total_chunk_count} chunk(s) para a CDN do TikTok...")
     try:
-        put_headers = {
-            "Content-Type": "video/mp4",
-            "Content-Length": str(video_size)
-        }
         with open(video_path, "rb") as f:
-            # Stream do arquivo para evitar estouro de memória
-            r = requests.put(upload_url, data=f, headers=put_headers, timeout=120)
-            
-        if r.status_code in [200, 201]:
-            log.info("Arquivo de vídeo enviado com sucesso para a CDN do TikTok!")
-            log.info(f"Upload concluído! ID de Publicação: {publish_id}")
-            return True
-        else:
-            log.error(f"Falha ao enviar arquivo de vídeo para a CDN. Status HTTP: {r.status_code}. Resposta: {r.text}")
-            return False
+            for i in range(total_chunk_count):
+                start_byte = i * resolved_chunk_size
+                if i == total_chunk_count - 1:
+                    # O último chunk lê todo o restante do arquivo
+                    chunk_data = f.read()
+                    end_byte = video_size - 1
+                else:
+                    chunk_data = f.read(resolved_chunk_size)
+                    end_byte = start_byte + len(chunk_data) - 1
+
+                chunk_length = len(chunk_data)
+                put_headers = {
+                    "Content-Type": "video/mp4",
+                    "Content-Length": str(chunk_length),
+                    "Content-Range": f"bytes {start_byte}-{end_byte}/{video_size}"
+                }
+                
+                log.info(f"Enviando chunk {i+1}/{total_chunk_count} ({chunk_length} bytes, range: {start_byte}-{end_byte})...")
+                r = requests.put(upload_url, data=chunk_data, headers=put_headers, timeout=120)
+                
+                if not (200 <= r.status_code < 300):
+                    log.error(f"Falha ao enviar o chunk {i+1} para a CDN. Status HTTP: {r.status_code}. Resposta: {r.text}")
+                    return False
+
+        log.info("Todos os chunks do vídeo foram enviados com sucesso para a CDN do TikTok!")
+        log.info(f"Upload concluído! ID de Publicação: {publish_id}")
+        return True
     except Exception as e:
         log.error(f"Erro durante o envio binário do vídeo do TikTok: {e}")
         return False

@@ -26,3 +26,7 @@ PROIBIDO (REGRAS DE OURO):
 - NÃO faça CTAs longos. Máximo 5 palavras.
 
 FORMATO: Retorne SOMENTE o texto puro que será narrado. Nada mais.
+
+INSTRUÇÃO DE ESTRUTURA NARRATIVA (OBRIGATÓRIA HOJE):
+{estrutura_instrucao}
+

@@ -134,7 +134,7 @@ def gerar_short(tema: str, index: int = 1, roteiro_path: str = None, skip_upload
     except Exception as e:
         log.error(f"Erro fatal no short #{index}: {e}")
         log.error(traceback.format_exc())
-def _calcular_horarios_publicacao(quantidade: int, um_por_dia: bool = False) -> list:
+def _calcular_horarios_publicacao(quantidade: int, um_por_dia: bool = False, dois_por_dia: bool = False) -> list:
     """
     Calcula horários de publicação inteligentes baseados nos picos de audiência.
     """
@@ -151,14 +151,49 @@ def _calcular_horarios_publicacao(quantidade: int, um_por_dia: bool = False) -> 
 
     horarios = []
 
-    if um_por_dia:
-        # 1 short por dia, nos próximos 'quantidade' dias
-        for dia_offset in range(1, quantidade + 1):
-            hora_pico = random.choice(PICOS_BRT)
+    if um_por_dia or dois_por_dia:
+        shorts_limite = 2 if dois_por_dia else 1
+        
+        # Encontra quais horários de pico ainda estão no futuro hoje
+        picos_futuros_hoje = []
+        for hora_pico in PICOS_BRT:
             slot_brt = agora_brt.replace(hour=hora_pico, minute=0, second=0, microsecond=0)
-            slot_brt += datetime.timedelta(days=dia_offset)
             slot_utc = slot_brt - BRT_OFFSET
-            horarios.append(slot_utc.strftime("%Y-%m-%dT%H:%M:%SZ"))
+            if slot_utc > agora_utc + datetime.timedelta(minutes=15):
+                picos_futuros_hoje.append(hora_pico)
+                
+        # Determinar agendamento do primeiro dia (hoje)
+        slots_hoje = min(len(picos_futuros_hoje), shorts_limite)
+        
+        if slots_hoje == 0:
+            # Se não houver slots hoje, o primeiro vídeo publica IMEDIATAMENTE (None)
+            # e os próximos serão agendados a partir de amanhã (dia_offset=1).
+            horarios.append(None)
+            dia_inicio = 1
+        else:
+            # Agendamos os primeiros no(s) horário(s) futuro(s) de hoje
+            # Pegamos os últimos slots disponíveis hoje
+            escolhidos_hoje = sorted(picos_futuros_hoje)[-slots_hoje:]
+            for hp in escolhidos_hoje:
+                slot_brt = agora_brt.replace(hour=hp, minute=0, second=0, microsecond=0)
+                slot_utc = slot_brt - BRT_OFFSET
+                horarios.append(slot_utc.strftime("%Y-%m-%dT%H:%M:%SZ"))
+            dia_inicio = 1
+
+        # Agendar os vídeos restantes para os dias seguintes
+        dia_offset = dia_inicio
+        while len(horarios) < quantidade:
+            # Escolhemos 'shorts_limite' horários de pico distintos para o dia
+            horas_dia = sorted(random.sample(PICOS_BRT, min(shorts_limite, len(PICOS_BRT))))
+            for hp in horas_dia:
+                if len(horarios) >= quantidade:
+                    break
+                slot_brt = agora_brt.replace(hour=hp, minute=0, second=0, microsecond=0)
+                slot_brt += datetime.timedelta(days=dia_offset)
+                slot_utc = slot_brt - BRT_OFFSET
+                horarios.append(slot_utc.strftime("%Y-%m-%dT%H:%M:%SZ"))
+            dia_offset += 1
+            
         return horarios
 
     # Comportamento padrão (empilhados)
@@ -192,7 +227,7 @@ def _calcular_horarios_publicacao(quantidade: int, um_por_dia: bool = False) -> 
     return horarios
 
 
-def executar_lote(temas: list, quantidade_por_tema: int = 1, um_por_dia: bool = False, **kwargs):
+def executar_lote(temas: list, quantidade_por_tema: int = 1, um_por_dia: bool = False, dois_por_dia: bool = False, **kwargs):
     """Executa um lote de shorts com cooldown e agenda nos horários de pico."""
     total = len(temas) * quantidade_por_tema
     sucesso = 0
@@ -204,29 +239,46 @@ def executar_lote(temas: list, quantidade_por_tema: int = 1, um_por_dia: bool = 
     log.info(f"{'#'*60}")
     inicio = time.time()
 
-    # Calcula horários de publicação inteligentes
-    horarios = _calcular_horarios_publicacao(total, um_por_dia=um_por_dia)
-    for i, h in enumerate(horarios):
-        if h:
-            log.info(f"  Short #{i+1} agendado para: {h}")
-        else:
-            log.info(f"  Short #{i+1}: IMEDIATO (público)")
+    # Previne que o Windows suspenda/durma durante o processamento do lote
+    import ctypes
+    try:
+        # ES_CONTINUOUS = 0x80000000, ES_SYSTEM_REQUIRED = 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
+        log.info("Prevenção de suspensão do Windows (Sleep Mode) ativada com sucesso.")
+    except Exception as e:
+        log.warning(f"Não foi possível ativar a prevenção de suspensão do Windows: {e}")
 
-    for tema in temas:
-        for _ in range(quantidade_por_tema):
-            publish_at = horarios[count - 1] if count - 1 < len(horarios) else None
-
-            resultado = gerar_short(tema, index=count, publish_at=publish_at, **kwargs)
-            if resultado:
-                sucesso += 1
+    try:
+        # Calcula horários de publicação inteligentes
+        horarios = _calcular_horarios_publicacao(total, um_por_dia=um_por_dia, dois_por_dia=dois_por_dia)
+        for i, h in enumerate(horarios):
+            if h:
+                log.info(f"  Short #{i+1} agendado para: {h}")
             else:
-                falhas += 1
-            count += 1
+                log.info(f"  Short #{i+1}: IMEDIATO (público)")
 
-            # Cooldown entre shorts para não estourar rate-limits
-            if count <= total:
-                log.info(f"Aguardando {COOLDOWN_ENTRE_SHORTS}s antes do próximo short...")
-                time.sleep(COOLDOWN_ENTRE_SHORTS)
+        for tema in temas:
+            for _ in range(quantidade_por_tema):
+                publish_at = horarios[count - 1] if count - 1 < len(horarios) else None
+
+                resultado = gerar_short(tema, index=count, publish_at=publish_at, **kwargs)
+                if resultado:
+                    sucesso += 1
+                else:
+                    falhas += 1
+                count += 1
+
+                # Cooldown entre shorts para não estourar rate-limits
+                if count <= total:
+                    log.info(f"Aguardando {COOLDOWN_ENTRE_SHORTS}s antes do próximo short...")
+                    time.sleep(COOLDOWN_ENTRE_SHORTS)
+    finally:
+        # Restaura as configurações normais de suspensão do Windows
+        try:
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+            log.info("Prevenção de suspensão do Windows desativada. Configurações restauradas.")
+        except Exception as e:
+            log.warning(f"Não foi possível restaurar as configurações de suspensão do Windows: {e}")
 
     duracao = time.time() - inicio
     log.info(f"{'#'*60}")
@@ -235,7 +287,7 @@ def executar_lote(temas: list, quantidade_por_tema: int = 1, um_por_dia: bool = 
     log.info(f"{'#'*60}")
 
 
-def job_automatico(quantidade: int, skip_upload: bool, um_por_dia: bool = False):
+def job_automatico(quantidade: int, skip_upload: bool, um_por_dia: bool = False, dois_por_dia: bool = False):
     """Job que roda automaticamente: busca temas virais e gera shorts."""
     log.info("="*60)
     log.info("MODO AUTOMÁTICO: Buscando temas de alto desempenho...")
@@ -252,6 +304,7 @@ def job_automatico(quantidade: int, skip_upload: bool, um_por_dia: bool = False)
             temas, 
             quantidade_por_tema=1, 
             um_por_dia=um_por_dia,
+            dois_por_dia=dois_por_dia,
             skip_upload=skip_upload
         )
     except Exception as e:
@@ -282,6 +335,7 @@ Exemplos de uso:
     parser.add_argument("--auto", type=int, metavar="N", help="Modo Piloto Automático: busca N temas virais e gera shorts")
     parser.add_argument("--agendar", type=str, metavar="HH:MM", help="Agendar execução diária (ex: 10:00 ou 08:00,14:00,20:00)")
     parser.add_argument("--um-por-dia", action="store_true", help="Agenda 1 short por dia para os próximos N dias nos horários de pico (8h, 12h, 18h)")
+    parser.add_argument("--dois-por-dia", action="store_true", help="Agenda 2 shorts por dia para os próximos N dias nos horários de pico (8h, 12h, 18h)")
 
     args = parser.parse_args()
 
@@ -293,7 +347,7 @@ Exemplos de uso:
             log.info(f"MODO FANTASMA ativado: {args.auto} shorts nos horários {horarios}")
             
             # Executa uma vez imediatamente
-            job_automatico(args.auto, args.sem_upload, args.um_por_dia)
+            job_automatico(args.auto, args.sem_upload, args.um_por_dia, args.dois_por_dia)
             
             # Agenda para os horários definidos
             for horario in horarios:
@@ -301,7 +355,8 @@ Exemplos de uso:
                     job_automatico, 
                     quantidade=args.auto, 
                     skip_upload=args.sem_upload,
-                    um_por_dia=args.um_por_dia
+                    um_por_dia=args.um_por_dia,
+                    dois_por_dia=args.dois_por_dia
                 )
                 log.info(f"Agendado para {horario} todos os dias.")
             
@@ -320,7 +375,7 @@ Exemplos de uso:
                     time.sleep(60)
         else:
             # Modo Automático Único: busca temas e gera agora
-            job_automatico(args.auto, args.sem_upload, args.um_por_dia)
+            job_automatico(args.auto, args.sem_upload, args.um_por_dia, args.dois_por_dia)
         return
 
     # === MODO MANUAL (temas fornecidos) ===
@@ -347,7 +402,8 @@ Exemplos de uso:
     extra_kwargs = {
         "roteiro_path": args.roteiro,
         "skip_upload": args.sem_upload,
-        "um_por_dia": args.um_por_dia
+        "um_por_dia": args.um_por_dia,
+        "dois_por_dia": args.dois_por_dia
     }
 
     if args.agendar:

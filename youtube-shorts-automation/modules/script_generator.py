@@ -7,6 +7,57 @@ from modules.logger import get_logger
 log = get_logger("script_generator")
 
 
+def quality_check(roteiro_texto: str, tema: str) -> tuple[bool, int, str]:
+    """
+    Validação local simples do roteiro antes de renderizar.
+    Retorna (passou, quality_score, motivo).
+    quality_score: 0-10 baseado em indicações heurísticas.
+    Não bloqueia o pipeline — apenas loga e retorna flag.
+    """
+    texto = roteiro_texto.strip()
+    score = 10
+    issues = []
+
+    # Comprimento em caracteres (300-900 equivale a ~40-70 segundos)
+    if len(texto) < 300:
+        score -= 3
+        issues.append(f"Muito curto ({len(texto)} chars)")
+    elif len(texto) > 950:
+        score -= 2
+        issues.append(f"Muito longo ({len(texto)} chars)")
+
+    # Verifica presença de gancho (primeiros 80 chars devem ter conteúdo do tema)
+    tema_keyword = tema.split()[0].lower() if tema else ""
+    if tema_keyword and tema_keyword not in texto[:120].lower():
+        score -= 1
+        issues.append("Tema ausente nos primeiros 120 chars (gancho pode ser fraco)")
+
+    # Detecta marcadores de estrutura (sínal de que o LLM não limpou o output)
+    markers = ["[Hook]", "[Corpo]", "[CTA]", "[Introdução]"]
+    if any(m in texto for m in markers):
+        score -= 2
+        issues.append("Marcadores de estrutura no texto (output não limpo)")
+
+    # Detecta saudaciões proibidas
+    forbidden_starts = ["Olá", "Oi ", "Fala galera", "Você sabia que"]
+    for fs in forbidden_starts:
+        if texto.startswith(fs):
+            score -= 2
+            issues.append(f"Começo proibido detectado: '{fs}'")
+            break
+
+    score = max(0, score)
+    passou = score >= 6
+    motivo = " | ".join(issues) if issues else "OK"
+
+    if not passou:
+        log.warning(f"[QualityCheck] Score {score}/10 | Tema: {tema} | Problemas: {motivo}")
+    else:
+        log.info(f"[QualityCheck] Score {score}/10 | {motivo}")
+
+    return passou, score, motivo
+
+
 def _parse_json(text: str) -> dict:
     try:
         if "```json" in text:
@@ -243,6 +294,18 @@ def gerar_roteiro(tema: str) -> dict:
     with open(prompt_path, "r", encoding="utf-8") as f:
         prompt_template = f.read()
 
+    # Injeta instrução de estrutura narrativa do dia
+    try:
+        from themes import get_structure_instruction_for_today
+        estrutura_instrucao = get_structure_instruction_for_today()
+    except Exception:
+        estrutura_instrucao = "Use a estrutura mais adequada ao tema."
+
+    prompt_template = prompt_template.format(
+        tema=tema,
+        estrutura_instrucao=estrutura_instrucao
+    )
+
     json_instructions = """
 
     IMPORTANTE: Você deve retornar EXATAMENTE UM JSON com o seguinte formato:
@@ -256,44 +319,51 @@ def gerar_roteiro(tema: str) -> dict:
       "clima_da_musica": "lofi hip hop calmo"
     }
     """
-    prompt_solo = prompt_template.format(tema=tema) + json_instructions
+    # prompt_template já foi formatado com {tema} e {estrutura_instrucao} acima
+    prompt_solo = prompt_template + json_instructions
     log.info(f"Gerando roteiro para o tema: {tema}")
+
+    def _finalizar(res: dict) -> dict:
+        """Aplica humanizador + quality_check e adiciona quality_score ao resultado."""
+        texto = _humanizar_roteiro(res["roteiro_texto"], tema)
+        res["roteiro_texto"] = texto
+        _, score, motivo = quality_check(texto, tema)
+        res["quality_score"] = score
+        res["quality_check_motivo"] = motivo
+        return res
 
     resultado = None
 
     # === PIPELINE MULTI-AGENTE (Llama 3 + GPT-4o) ===
-    rascunho = _gerar_rascunho_groq(prompt_template.format(tema=tema))
+    rascunho = _gerar_rascunho_groq(prompt_template)
     if rascunho:
         resultado = _refinar_com_gpt(rascunho, tema)
         if resultado and "roteiro_texto" in resultado:
-            resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
-            return resultado
+            return _finalizar(resultado)
         log.warning("GPT não conseguiu refinar. Tentando fallbacks solo...")
 
     # === FALLBACKS SOLO ===
     resultado = _gerar_roteiro_openai_solo(prompt_solo)
     if resultado and "roteiro_texto" in resultado:
-        resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
-        return resultado
+        return _finalizar(resultado)
 
     resultado = _gerar_roteiro_groq_solo(prompt_solo)
     if resultado and "roteiro_texto" in resultado:
-        resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
-        return resultado
+        return _finalizar(resultado)
 
     resultado = _gerar_roteiro_ollama(prompt_solo)
     if resultado and "roteiro_texto" in resultado:
-        resultado["roteiro_texto"] = _humanizar_roteiro(resultado["roteiro_texto"], tema)
-        return resultado
+        return _finalizar(resultado)
 
     # Fallback de emergência
     log.error("Todas as APIs falharam. Usando roteiro de emergência.")
     return {
         "roteiro_texto": f"Você não vai acreditar no que descobri sobre {tema}! Curta e se inscreva para mais!",
         "busca_videos": [f"{tema}"],
-        "clima_da_musica": "calm ambient"
+        "clima_da_musica": "calm ambient",
+        "quality_score": 0,
+        "quality_check_motivo": "Fallback de emergência"
     }
-
 
 
 def carregar_roteiro_arquivo(caminho: str) -> dict:

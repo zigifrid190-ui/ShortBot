@@ -257,7 +257,9 @@ def _gerar_sfx_whoosh():
     Tenta baixar um efeito sonoro de transição de alta qualidade do GitHub.
     Se falhar, tenta gerar um efeito sintético de ruído branco.
     """
-    sfx_path = os.path.join(ASSETS_DIR, "swoosh_fallback.mp3")
+    sfx_dir = os.path.join(ASSETS_DIR, "sfx")
+    os.makedirs(sfx_dir, exist_ok=True)
+    sfx_path = os.path.join(sfx_dir, "swoosh_fallback.mp3")
     
     # 1. Tentar download do GitHub (button-0.mp3 do SoundManager2)
     try:
@@ -289,7 +291,7 @@ def _gerar_sfx_whoosh():
 
     audio_data = noise * envelope
 
-    gen_path = os.path.join(ASSETS_DIR, "_whoosh_generated.mp3")
+    gen_path = os.path.join(sfx_dir, "_whoosh_generated.mp3")
     try:
         import soundfile as sf
         sf.write(gen_path, audio_data, sample_rate)
@@ -298,7 +300,7 @@ def _gerar_sfx_whoosh():
         # Fallback: cria com scipy se disponível
         try:
             from scipy.io import wavfile
-            wav_path = os.path.join(ASSETS_DIR, "_whoosh_generated.wav")
+            wav_path = os.path.join(sfx_dir, "_whoosh_generated.wav")
             wavfile.write(wav_path, sample_rate, (audio_data * 32767).astype(np.int16))
             return wav_path
         except ImportError:
@@ -357,8 +359,10 @@ def editar_video(
 
         # 2.5 Adicionar SFX (Whoosh) nas transições
         sfx_clips = []
-        swoosh_path = os.path.join(ASSETS_DIR, "swoosh.mp3")
-
+        sfx_dir = os.path.join(ASSETS_DIR, "sfx")
+        os.makedirs(sfx_dir, exist_ok=True)
+        swoosh_path = os.path.join(sfx_dir, "swoosh.mp3")
+ 
         # Se não tiver o arquivo swoosh.mp3, tenta gerar um sintético
         if not os.path.exists(swoosh_path):
             swoosh_path = _gerar_sfx_whoosh()

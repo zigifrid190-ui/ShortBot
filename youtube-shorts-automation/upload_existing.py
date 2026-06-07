@@ -12,6 +12,8 @@ sys.path.append(BASE_DIR)
 
 from modules.logger import get_logger
 from modules.uploader import upload_youtube
+from modules.tiktok_uploader import upload_tiktok
+from config import DISABLE_TIKTOK
 
 log = get_logger("upload_existing")
 
@@ -62,7 +64,7 @@ def obter_titulo_do_nome(filename: str) -> str:
 
 def processar_upload_individual(video_path: str, thumb_path: str = None, meta_path: str = None,
                                titulo: str = None, descricao: str = None, agendar: str = None,
-                               skip_upload: bool = False):
+                               skip_upload: bool = False, plataforma: str = "ambas"):
     """Realiza o upload de um único vídeo."""
     log.info(f"Processando vídeo individual: {video_path}")
     
@@ -129,19 +131,41 @@ def processar_upload_individual(video_path: str, thumb_path: str = None, meta_pa
         log.info("[MOCK] Upload simulado com sucesso (modo --sem-upload).")
         return True
         
-    video_id = upload_youtube(
-        video_path=video_path,
-        thumb_path=thumb_path,
-        roteiro=roteiro_final,
-        tema="",
-        publish_at=agendar,
-        titulo_youtube=titulo_final,
-        descricao_youtube=descricao_final
-    )
-    return video_id is not None
+    sucesso_yt = True
+    if plataforma in ("youtube", "ambas"):
+        video_id = upload_youtube(
+            video_path=video_path,
+            thumb_path=thumb_path,
+            roteiro=roteiro_final,
+            tema="",
+            publish_at=agendar,
+            titulo_youtube=titulo_final,
+            descricao_youtube=descricao_final
+        )
+        sucesso_yt = video_id is not None
+
+    sucesso_tt = True
+    if plataforma in ("tiktok", "ambas"):
+        if DISABLE_TIKTOK:
+            log.info("Upload para o TikTok desativado no arquivo .env.")
+        else:
+            try:
+                log.info("Iniciando upload correspondente para o TikTok...")
+                sucesso_tt = upload_tiktok(
+                    video_path=video_path,
+                    roteiro=roteiro_final,
+                    tema="",
+                    publish_at=agendar,
+                    legenda_personalizada=titulo_final
+                )
+            except Exception as e:
+                log.error(f"Erro ao enviar para o TikTok: {e}")
+                sucesso_tt = False
+
+    return sucesso_yt and sucesso_tt
 
 def processar_upload_lote(pasta_path: str, agendar_inicio: str = None, intervalo_horas: int = 4,
-                          skip_upload: bool = False):
+                          skip_upload: bool = False, plataforma: str = "ambas"):
     """Varre a pasta em busca de arquivos .mp4 e faz o upload em lote."""
     log.info(f"Iniciando varredura em lote na pasta: {pasta_path}")
     
@@ -187,7 +211,8 @@ def processar_upload_lote(pasta_path: str, agendar_inicio: str = None, intervalo
             titulo=None,
             descricao=None,
             agendar=agendar_str,
-            skip_upload=skip_upload
+            skip_upload=skip_upload,
+            plataforma=plataforma
         )
         
         if sucesso:
@@ -234,6 +259,7 @@ Exemplos de uso:
     
     # Flag global
     parser.add_argument("--sem-upload", action="store_true", help="Executa as preparações e buscas de metadados sem fazer upload real")
+    parser.add_argument("--plataforma", type=str, choices=["youtube", "tiktok", "ambas"], default="ambas", help="Plataforma de destino para o upload (padrão: ambas)")
 
     args = parser.parse_args()
 
@@ -250,7 +276,8 @@ Exemplos de uso:
             titulo=args.titulo,
             descricao=args.descricao,
             agendar=args.agendar,
-            skip_upload=args.sem_upload
+            skip_upload=args.sem_upload,
+            plataforma=args.plataforma
         )
         sys.exit(0 if sucesso else 1)
         
@@ -263,7 +290,8 @@ Exemplos de uso:
             pasta_path=args.pasta,
             agendar_inicio=args.agendar_lote_inicio,
             intervalo_horas=args.intervalo_horas,
-            skip_upload=args.sem_upload
+            skip_upload=args.sem_upload,
+            plataforma=args.plataforma
         )
         sys.exit(0 if sucesso else 1)
 
