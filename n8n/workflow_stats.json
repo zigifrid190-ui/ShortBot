@@ -191,6 +191,8 @@
     }
   },
   "active": true,
-  "settings": {},
+  "settings": {
+    "timezone": "America/Sao_Paulo"
+  },
   "id": "4e8a8a8a-e9fa-47c1-8408-e8db5d8c36df"
 }
