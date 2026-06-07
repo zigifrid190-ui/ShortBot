@@ -1,0 +1,94 @@
+{
+  "gerado_em": "2026-06-06T22:40:22.509469",
+  "periodo_inicio": "2026-05-30",
+  "periodo_fim": "2026-06-06",
+  "total_videos": 13,
+  "views_totais": 9164,
+  "likes_totais": 286,
+  "comments_totais": 7,
+  "media_engagement_pct": 2.08,
+  "media_quality_score": null,
+  "top_3": [
+    {
+      "titulo": "A anomalia inexplicável da Cratera de Tycho 😲",
+      "tema": "a anomalia da cratera de tycho",
+      "views": 1479,
+      "likes": 48,
+      "comments": 1,
+      "engagement_pct": 3.31,
+      "viral_rate_pct": 3.25,
+      "quality_score": null,
+      "video_id": "YESVDc6LvrA"
+    },
+    {
+      "titulo": "😱 O mistério do peixe-lanterna que a ciência não consegue explicar",
+      "tema": "os peixes mais estranhos que você jamais viu",
+      "views": 1469,
+      "likes": 44,
+      "comments": 2,
+      "engagement_pct": 3.13,
+      "viral_rate_pct": 3.0,
+      "quality_score": null,
+      "video_id": "dCPVXhpqM78"
+    },
+    {
+      "titulo": "😱 3 animais venenosos mais estranhos do mundo!",
+      "tema": "animais venenosos mais estranhos do mundo",
+      "views": 1268,
+      "likes": 33,
+      "comments": 0,
+      "engagement_pct": 2.6,
+      "viral_rate_pct": 2.6,
+      "quality_score": null,
+      "video_id": "TQKbB2pZcO8"
+    }
+  ],
+  "bottom_3": [
+    {
+      "titulo": "😱 O mistério do peixe-lua e suas adaptações surpreendentes",
+      "tema": "você sabia que o peixe-lua é apenas o começo? Conheça os outros!",
+      "views": 668,
+      "likes": 40,
+      "engagement_pct": 5.99,
+      "viral_rate_pct": 5.99,
+      "quality_score": null,
+      "video_id": "f2-NLL59mB4"
+    },
+    {
+      "titulo": "😱 O polvo que pode te deixar paralisado!",
+      "tema": "o polvo que pode te deixar paralisado!",
+      "views": 812,
+      "likes": 33,
+      "engagement_pct": 4.06,
+      "viral_rate_pct": 4.06,
+      "quality_score": null,
+      "video_id": "D8_a16bq65g"
+    },
+    {
+      "titulo": "😱 O mistério do cérebro que mudou uma vida",
+      "tema": "fatos incríveis sobre o cérebro que vão te surpreender",
+      "views": 973,
+      "likes": 25,
+      "engagement_pct": 2.57,
+      "viral_rate_pct": 2.57,
+      "quality_score": null,
+      "video_id": "dydBBvrU5f0"
+    }
+  ],
+  "alertas": [
+    "✅ Nenhum alerta crítico esta semana."
+  ],
+  "recomendacoes": [
+    "🔧 Roteiro com pior engajamento: '😱 O mistério do peixe-lua e suas adaptações surpreendentes' (668 views). Analise a estrutura do gancho e evite repetir.",
+    "✅ Melhor desempenho: 'A anomalia inexplicável da Cratera de Tycho 😲' (1479 views). Explore variações deste tema/ângulo."
+  ],
+  "historico_4_semanas": [
+    {
+      "semana": "2026-05-28",
+      "total_videos": 2,
+      "views_totais": 2730,
+      "media_quality_score": null,
+      "alertas": 1
+    }
+  ]
+}
